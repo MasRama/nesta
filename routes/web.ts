@@ -1,5 +1,10 @@
 import AuthController from "../app/controllers/AuthController"; 
+import SchoolAuthController from "../app/controllers/SchoolAuthController";
+import AttendanceController from "../app/controllers/AttendanceController";
+import JournalController from "../app/controllers/JournalController";
+import ExamController from "../app/controllers/ExamController";
 import Auth from "../app/middlewares/auth"
+import RoleAuth from "../app/middlewares/roleAuth";
 import HomeController from "../app/controllers/HomeController";
 import AssetController from "../app/controllers/AssetController";
 import HyperExpress from 'hyper-express';
@@ -19,17 +24,17 @@ Route.get("/", HomeController.index);
  * Routes for handling user authentication
  * ------------------------------------------------
  * GET   /login - Login page
- * POST  /login - Process login
+ * POST  /login - Process login (school auth)
  * GET   /register - Registration page
- * POST  /register - Process registration
+ * POST  /register - Process registration (school auth)
  * POST  /logout - Logout user
  * GET   /google/redirect - Google OAuth redirect
  * GET   /google/callback - Google OAuth callback
  */
 Route.get("/login", AuthController.loginPage);
-Route.post("/login", AuthController.processLogin);
+Route.post("/login", SchoolAuthController.processLogin);
 Route.get("/register", AuthController.registerPage);
-Route.post("/register", AuthController.processRegister);
+Route.post("/register", SchoolAuthController.processRegister);
 Route.post("/logout", AuthController.logout);
 Route.get("/google/redirect", AuthController.redirect);
 Route.get("/google/callback", AuthController.googleCallback);
@@ -49,10 +54,96 @@ Route.get("/reset-password/:id", AuthController.resetPasswordPage);
 Route.post("/reset-password", AuthController.resetPassword);
 
 /**
- * Protected Routes
- * These routes require authentication
+ * Role-Based Dashboard Routes
+ * These routes serve different dashboards based on user role
  * ------------------------------------------------
- * GET   /home - User dashboard
+ * GET   /dashboard/student - Student dashboard
+ * GET   /dashboard/teacher - Teacher dashboard
+ * GET   /dashboard/parent - Parent dashboard
+ * GET   /dashboard/admin - Admin dashboard
+ */
+Route.get("/dashboard/student", [Auth, RoleAuth.student()], SchoolAuthController.getDashboardData);
+Route.get("/dashboard/teacher", [Auth, RoleAuth.teacher()], SchoolAuthController.getDashboardData);
+Route.get("/dashboard/parent", [Auth, RoleAuth.parent()], SchoolAuthController.getDashboardData);
+Route.get("/dashboard/admin", [Auth, RoleAuth.admin()], SchoolAuthController.getDashboardData);
+
+/**
+ * Attendance System Routes
+ * Routes for QR code attendance management
+ * ------------------------------------------------
+ * POST  /api/attendance/generate-qr - Generate QR code for attendance (Teacher)
+ * POST  /api/attendance/scan - Process QR code scan (Student)
+ * GET   /api/attendance/class/:class_id - Get class attendance records
+ * GET   /api/attendance/student/:student_id - Get student attendance history
+ * GET   /api/attendance/stats/:student_id - Get attendance statistics
+ * POST  /api/attendance/close/:session_id - Close attendance session
+ */
+Route.post("/api/attendance/generate-qr", [Auth, RoleAuth.teacher()], AttendanceController.generateQRCode);
+Route.post("/api/attendance/scan", [Auth, RoleAuth.student()], AttendanceController.processScan);
+Route.get("/api/attendance/class/:class_id", [Auth, RoleAuth.teacherOrAdmin()], AttendanceController.getClassAttendance);
+Route.get("/api/attendance/student/:student_id", [Auth], AttendanceController.getStudentAttendance);
+Route.get("/api/attendance/stats/:student_id", [Auth], AttendanceController.getAttendanceStats);
+Route.post("/api/attendance/close/:session_id", [Auth, RoleAuth.teacher()], AttendanceController.closeSession);
+
+/**
+ * Journal Management Routes
+ * Routes for teacher journal creation and management
+ * ------------------------------------------------
+ * GET   /journal/create - Journal creation form (Teacher)
+ * POST  /journal - Create new journal (Teacher)
+ * GET   /journal/:journal_id/edit - Journal edit form (Teacher)
+ * PUT   /journal/:journal_id - Update journal (Teacher)
+ * POST  /journal/:journal_id/upload - Upload media files (Teacher)
+ * GET   /api/journal/teacher/:teacher_id - Get teacher's journals
+ * GET   /api/journal/class/:class_id - Get class journals
+ * POST  /api/journal/:journal_id/publish - Publish journal (Teacher)
+ * DELETE /api/journal/:journal_id - Delete journal (Teacher)
+ * GET   /api/journal/search - Search journals
+ */
+Route.get("/journal/create", [Auth, RoleAuth.teacher()], JournalController.createPage);
+Route.post("/journal", [Auth, RoleAuth.teacher()], JournalController.create);
+Route.get("/journal/:journal_id/edit", [Auth, RoleAuth.teacher()], JournalController.editPage);
+Route.put("/journal/:journal_id", [Auth, RoleAuth.teacher()], JournalController.update);
+Route.post("/journal/:journal_id/upload", [Auth, RoleAuth.teacher()], JournalController.uploadMedia);
+Route.get("/api/journal/teacher/:teacher_id", [Auth], JournalController.getTeacherJournals);
+Route.get("/api/journal/class/:class_id", [Auth], JournalController.getClassJournals);
+Route.post("/api/journal/:journal_id/publish", [Auth, RoleAuth.teacher()], JournalController.publish);
+Route.delete("/api/journal/:journal_id", [Auth, RoleAuth.teacher()], JournalController.delete);
+Route.get("/api/journal/search", [Auth], JournalController.search);
+
+/**
+ * Exam Management Routes
+ * Routes for exam creation, management, and taking
+ * ------------------------------------------------
+ * GET   /exam/create - Exam creation form (Teacher)
+ * POST  /exam/import-excel - Import questions from Excel (Teacher)
+ * GET   /exam/template - Download Excel template
+ * POST  /exam/:exam_id/start - Start exam attempt (Student)
+ * POST  /exam/attempt/:attempt_id/answer - Submit answer (Student)
+ * POST  /exam/attempt/:attempt_id/submit - Submit complete exam (Student)
+ * GET   /exam/:exam_id/results - Get exam results (Teacher)
+ * GET   /api/exam/student/:student_id? - Get student's exams
+ * POST  /api/exam/:exam_id/activate - Activate exam (Teacher)
+ * GET   /api/exam/:exam_id - Get exam details
+ * GET   /api/exam/teacher/:teacher_id? - Get teacher's exams
+ */
+Route.get("/exam/create", [Auth, RoleAuth.teacher()], ExamController.createPage);
+Route.post("/exam/import-excel", [Auth, RoleAuth.teacher()], ExamController.importExcel);
+Route.get("/exam/template", [Auth, RoleAuth.teacher()], ExamController.downloadTemplate);
+Route.post("/exam/:exam_id/start", [Auth, RoleAuth.student()], ExamController.startAttempt);
+Route.post("/exam/attempt/:attempt_id/answer", [Auth, RoleAuth.student()], ExamController.submitAnswer);
+Route.post("/exam/attempt/:attempt_id/submit", [Auth, RoleAuth.student()], ExamController.submitExam);
+Route.get("/exam/:exam_id/results", [Auth, RoleAuth.teacherOrAdmin()], ExamController.getResults);
+Route.get("/api/exam/student/:student_id?", [Auth], ExamController.getStudentExams);
+Route.post("/api/exam/:exam_id/activate", [Auth, RoleAuth.teacher()], ExamController.activateExam);
+Route.get("/api/exam/:exam_id", [Auth], ExamController.getExamDetails);
+Route.get("/api/exam/teacher/:teacher_id?", [Auth], ExamController.getTeacherExams);
+
+/**
+ * Legacy Protected Routes
+ * These routes are maintained for backward compatibility
+ * ------------------------------------------------
+ * GET   /home - User dashboard (redirects to role-based dashboard)
  * GET   /profile - User profile
  * POST  /change-profile - Update profile
  * POST  /change-password - Change password

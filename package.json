@@ -5,13 +5,21 @@
   "main": "server.ts",
   "scripts": {
     "dev": "clear && npx concurrently 'vite'  'sleep 1 && npx nodemon --legacy-watch'",
-    "build": "rm -rf build && vite build && tsc && cp -rf dist build && cp -rf public build "
+    "build": "rm -rf build && vite build && tsc && cp -rf dist build && cp -rf public build",
+    "migrate": "npx knex migrate:latest",
+    "seed": "npx ts-node seeder.ts",
+    "test": "npx ts-node test-system.ts",
+    "setup": "npm run migrate && npm run seed",
+    "reset": "npm run migrate && npm run seed && npm run test"
   },
   "author": "Maulana Shalihin",
   "license": "ISC",
   "dependencies": {
     "@inertiajs/svelte": "^2.0.0-beta.2",
     "@tailwindcss/typography": "^0.5.16",
+    "@types/multer": "^2.0.0",
+    "@types/qrcode": "^1.5.5",
+    "@types/uuid": "^10.0.0",
     "axios": "^1.7.7",
     "better-sqlite3": "^11.5.0",
     "concurrently": "^9.0.1",
@@ -23,8 +31,13 @@
     "hyper-express": "^6.17.2",
     "ioredis": "^5.4.1",
     "knex": "^3.1.0",
+    "moment": "^2.30.1",
+    "multer": "^2.0.2",
     "nodemailer": "^6.9.15",
-    "squirrelly": "^9.1.0"
+    "qrcode": "^1.5.4",
+    "squirrelly": "^9.1.0",
+    "uuid": "^11.1.0",
+    "xlsx": "^0.18.5"
   },
   "devDependencies": {
     "@sveltejs/vite-plugin-svelte": "^4.0.0",
