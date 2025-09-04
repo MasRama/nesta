@@ -9,7 +9,7 @@ class SchoolAuthController {
     * Role-based login process
     * Redirects users to appropriate dashboards based on their role
     */
-   public async processLogin(request: Request, response: Response) {
+   public processLogin = async (request: Request, response: Response) => {
       let body = await request.json();
       let { email, password, phone } = body;
 
@@ -71,7 +71,7 @@ class SchoolAuthController {
    /**
     * Register new user with role
     */
-   public async processRegister(request: Request, response: Response) {
+   public processRegister = async (request: Request, response: Response) => {
       let { email, password, name, role, student_id, teacher_id } = await request.json();
 
       email = email.toLowerCase();
@@ -103,7 +103,7 @@ class SchoolAuthController {
    /**
     * Get dashboard data based on user role
     */
-   public async getDashboardData(request: Request, response: Response) {
+   public getDashboardData = async (request: Request, response: Response) => {
       const user = request.user;
 
       switch (user.role) {
