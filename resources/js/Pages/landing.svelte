@@ -110,16 +110,10 @@
          <!-- Action Buttons -->
          <div class="hidden md:flex items-center space-x-3">
             <button 
-               class="px-4 py-2 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-100 transition-all duration-200 dark:text-gray-300 dark:hover:bg-gray-800"
+               class="px-6 py-2 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg text-sm font-medium hover:from-blue-700 hover:to-blue-800 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
                on:click={navigateToLogin}
             >
                Masuk
-            </button>
-            <button 
-               class="px-6 py-2 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg text-sm font-medium hover:from-blue-700 hover:to-blue-800 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
-               on:click={navigateToRegister}
-            >
-               Daftar Sekarang
             </button>
          </div>
 
@@ -171,16 +165,10 @@
                </button>
                <hr class="border-gray-200 dark:border-gray-700 my-2">
                <button 
-                  class="px-4 py-3 text-left rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-100 transition-colors dark:text-gray-300 dark:hover:bg-gray-800"
+                  class="mx-4 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg text-sm font-medium hover:from-blue-700 hover:to-blue-800 transition-all duration-200 shadow-lg"
                   on:click={navigateToLogin}
                >
                   Masuk
-               </button>
-               <button 
-                  class="mx-4 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg text-sm font-medium hover:from-blue-700 hover:to-blue-800 transition-all duration-200 shadow-lg"
-                  on:click={navigateToRegister}
-               >
-                  Daftar Sekarang
                </button>
             </div>
          </div>
