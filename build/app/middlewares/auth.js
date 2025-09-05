@@ -8,7 +8,7 @@ exports.default = async (request, response) => {
     if (request.cookies.auth_id) {
         const session = await DB_1.default.from("sessions").where("id", request.cookies.auth_id).first();
         if (session) {
-            const user = await DB_1.default.from("users").where("id", session.user_id).select(["id", "name", "email", "phone", "is_admin", "is_verified"]).first();
+            const user = await DB_1.default.from("users").where("id", session.user_id).select(["id", "name", "email", "phone", "is_admin", "is_verified", "role", "student_id", "teacher_id", "profile_image"]).first();
             request.user = user;
             request.share = {
                 "user": request.user,

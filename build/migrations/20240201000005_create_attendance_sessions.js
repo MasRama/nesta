@@ -1,0 +1,31 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.up = up;
+exports.down = down;
+async function up(knex) {
+    return knex.schema.createTable('attendance_sessions', (table) => {
+        table.uuid('id').primary().notNullable();
+        table.uuid('class_id').notNullable().index();
+        table.uuid('teacher_id').notNullable().index();
+        table.date('attendance_date').notNullable();
+        table.string('qr_token').notNullable().unique();
+        table.timestamp('starts_at').notNullable();
+        table.timestamp('expires_at').notNullable();
+        table.boolean('is_active').defaultTo(true);
+        table.text('notes').nullable();
+        table.bigInteger('created_at').notNullable();
+        table.bigInteger('updated_at').notNullable();
+        table.foreign('class_id')
+            .references('id')
+            .inTable('classes')
+            .onDelete('CASCADE');
+        table.foreign('teacher_id')
+            .references('id')
+            .inTable('users')
+            .onDelete('CASCADE');
+    });
+}
+async function down(knex) {
+    return knex.schema.dropTable('attendance_sessions');
+}
+//# sourceMappingURL=20240201000005_create_attendance_sessions.js.map
