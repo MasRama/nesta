@@ -12,11 +12,14 @@
    let users = [];
    let classes = [];
    let systemLogs = [];
-   
+   let students = [];
+
    function navigateToSection(section) {
       currentSection = section;
       if (section === 'users') {
          loadUsers();
+      } else if (section === 'students') {
+         loadStudents();
       } else if (section === 'classes') {
          loadClasses();
       } else if (section === 'system') {
@@ -43,6 +46,18 @@
          console.log('Loading users...');
       } catch (error) {
          console.error('Error loading users:', error);
+      } finally {
+         isLoading = false;
+      }
+   }
+
+   async function loadStudents() {
+      isLoading = true;
+      try {
+         // Navigate to students management page
+         router.visit('/admin/students');
+      } catch (error) {
+         console.error('Error loading students:', error);
       } finally {
          isLoading = false;
       }
@@ -186,7 +201,28 @@
                   <span>Manajemen User</span>
                </div>
             </button>
-            <button 
+            <button
+               class="px-6 py-3 rounded-xl font-medium text-sm nav-btn-enhanced"
+               class:bg-gradient-to-r={currentSection === 'students'}
+               class:from-teal-600={currentSection === 'students'}
+               class:to-cyan-600={currentSection === 'students'}
+               class:text-white={currentSection === 'students'}
+               class:shadow-lg={currentSection === 'students'}
+               class:bg-gray-100={currentSection !== 'students'}
+               class:text-gray-700={currentSection !== 'students'}
+               class:hover:bg-gray-200={currentSection !== 'students'}
+               on:click={() => navigateToSection('students')}
+            >
+               <div class="flex items-center space-x-2">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 14l9-5-9-5-9 5 9 5z"/>
+                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 14l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14z"/>
+                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 14l9-5-9-5-9 5 9 5zm0 0l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14z"/>
+                  </svg>
+                  <span>Manajemen Siswa</span>
+               </div>
+            </button>
+            <button
                class="px-6 py-3 rounded-xl font-medium text-sm nav-btn-enhanced"
                class:bg-gradient-to-r={currentSection === 'classes'}
                class:from-green-600={currentSection === 'classes'}

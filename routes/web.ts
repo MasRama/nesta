@@ -1,8 +1,9 @@
-import AuthController from "../app/controllers/AuthController"; 
+import AuthController from "../app/controllers/AuthController";
 import SchoolAuthController from "../app/controllers/SchoolAuthController";
 import AttendanceController from "../app/controllers/AttendanceController";
 import JournalController from "../app/controllers/JournalController";
 import ExamController from "../app/controllers/ExamController";
+import StudentController from "../app/controllers/StudentController";
 import Auth from "../app/middlewares/auth"
 import RoleAuth from "../app/middlewares/roleAuth";
 import HomeController from "../app/controllers/HomeController";
@@ -156,8 +157,44 @@ Route.post("/change-password", [Auth], AuthController.changePassword);
 Route.delete("/users", [Auth], AuthController.deleteUsers);
 
 /**
+ * Student Management Routes (Admin Only)
+ * These routes handle CRUD operations for student data
+ * ------------------------------------------------
+ * GET    /admin/students - List all students with pagination and filters
+ * GET    /admin/students/create - Show create student form
+ * POST   /admin/students - Store new student
+ * GET    /admin/students/:id - Show student detail
+ * GET    /admin/students/:id/edit - Show edit student form
+ * PUT    /admin/students/:id - Update student
+ * DELETE /admin/students/:id - Delete student (soft delete)
+ *
+ * CSV Import/Export Routes:
+ * POST   /admin/students/import-csv - Import students from CSV
+ * GET    /admin/students/export-csv - Export students to CSV
+ * GET    /admin/students/template-csv - Download CSV template
+ *
+ * API Routes:
+ * GET    /api/students - Get students data (AJAX)
+ */
+Route.get("/admin/students", [Auth, RoleAuth.admin()], StudentController.index);
+Route.get("/admin/students/create", [Auth, RoleAuth.admin()], StudentController.create);
+Route.post("/admin/students", [Auth, RoleAuth.admin()], StudentController.store);
+Route.get("/admin/students/:id", [Auth, RoleAuth.admin()], StudentController.show);
+Route.get("/admin/students/:id/edit", [Auth, RoleAuth.admin()], StudentController.edit);
+Route.put("/admin/students/:id", [Auth, RoleAuth.admin()], StudentController.update);
+Route.delete("/admin/students/:id", [Auth, RoleAuth.admin()], StudentController.destroy);
+
+// CSV Import/Export Routes
+Route.post("/admin/students/import-csv", [Auth, RoleAuth.admin()], StudentController.importCSV);
+Route.get("/admin/students/export-csv", [Auth, RoleAuth.admin()], StudentController.exportCSV);
+Route.get("/admin/students/template-csv", [Auth, RoleAuth.admin()], StudentController.downloadTemplate);
+
+// API Routes
+Route.get("/api/students", [Auth, RoleAuth.admin()], StudentController.getStudentsAPI);
+
+/**
  * Static Asset Handling Routes
- * 
+ *
  * 1. Dist Assets (/assets/:file)
  * Serves compiled and bundled assets from the dist/assets directory
  * - Handles JavaScript files (*.js) with proper content type
