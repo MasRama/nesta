@@ -3,7 +3,7 @@ export default {
   content: [
     "./resources/**/*.{svelte,html,js,ts}",
   ],
-  darkMode: 'class',
+  // darkMode: 'class', // Disabled dark mode
   theme: {
     extend: {
       fontFamily: {

@@ -4,7 +4,7 @@
   import { fly, fade } from 'svelte/transition'
   import { page } from '@inertiajs/svelte'
   import Header from '../Components/Header.svelte'
-  
+
   let features = [
     {
       title: "Powerful Features",
@@ -27,13 +27,13 @@
 <Header group="home" />
 
 <!-- Hero Section -->
-<div class="min-h-screen bg-gradient-to-b from-white to-gray-50 dark:from-gray-900 dark:to-gray-800">
+<div class="min-h-screen bg-gradient-to-b from-white to-gray-50">
   <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-32 pb-16">
     <div class="text-center" in:fly={{ y: 20, duration: 800, delay: 200 }}>
-      <h1 class="text-4xl sm:text-6xl font-bold text-gray-900 dark:text-white mb-6">
-        Welcome to <span class="text-blue-600 dark:text-blue-400">Laju</span>
+      <h1 class="text-4xl sm:text-6xl font-bold text-gray-900 mb-6">
+        Welcome to <span class="text-blue-600">Laju</span>
       </h1>
-      <p class="text-xl text-gray-600 dark:text-gray-300 max-w-2xl mx-auto mb-8">
+      <p class="text-xl text-gray-600 max-w-2xl mx-auto mb-8">
         A high-performance TypeScript web framework for building modern full-stack applications with speed and elegance.
       </p>
       <div class="flex justify-center gap-4">
@@ -47,7 +47,7 @@
         <a
           href="/about"
           use:inertia
-          class="px-6 py-3 text-gray-700 dark:text-gray-200 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg font-medium transition-colors"
+          class="px-6 py-3 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg font-medium transition-colors"
         >
           Learn More
         </a>
@@ -57,30 +57,30 @@
 </div>
 
 <!-- Features Section -->
-<div class="py-24 bg-white dark:bg-gray-900">
+<div class="py-24 bg-white">
   <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
     <div class="grid md:grid-cols-3 gap-8">
       {#each features as feature, i}
-        <div 
-          class="p-6 rounded-xl bg-gray-50 dark:bg-gray-800 hover:shadow-lg transition-shadow duration-300"
+        <div
+          class="p-6 rounded-xl bg-gray-50 hover:shadow-lg transition-shadow duration-300"
           in:fly={{ y: 20, duration: 800, delay: 200 + (i * 100) }}
         >
-          <div class="w-12 h-12 bg-blue-100 dark:bg-blue-900 rounded-lg flex items-center justify-center mb-4">
+          <div class="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center mb-4">
             <svg
               xmlns="http://www.w3.org/2000/svg"
               fill="none"
               viewBox="0 0 24 24"
               stroke-width="1.5"
               stroke="currentColor"
-              class="w-6 h-6 text-blue-600 dark:text-blue-400"
+              class="w-6 h-6 text-blue-600"
             >
               {@html feature.icon}
             </svg>
           </div>
-          <h3 class="text-xl font-semibold text-gray-900 dark:text-white mb-2">
+          <h3 class="text-xl font-semibold text-gray-900 mb-2">
             {feature.title}
           </h3>
-          <p class="text-gray-600 dark:text-gray-300">
+          <p class="text-gray-600">
             {feature.description}
           </p>
         </div>
@@ -90,13 +90,13 @@
 </div>
 
 <!-- CTA Section -->
-<div class="py-24 bg-gray-50 dark:bg-gray-800">
+<div class="py-24 bg-gray-50">
   <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
     <div in:fly={{ y: 20, duration: 800 }}>
-      <h2 class="text-3xl font-bold text-gray-900 dark:text-white mb-4">
+      <h2 class="text-3xl font-bold text-gray-900 mb-4">
         Ready to Get Started?
       </h2>
-      <p class="text-xl text-gray-600 dark:text-gray-300 mb-8 max-w-2xl mx-auto">
+      <p class="text-xl text-gray-600 mb-8 max-w-2xl mx-auto">
         Join us and experience the next generation of development tools.
       </p>
       <a
@@ -113,7 +113,11 @@
           stroke="currentColor"
           class="w-5 h-5 ml-2"
         >
-          <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3"
+          />
         </svg>
       </a>
     </div>

@@ -187,7 +187,7 @@
    }
 </style>
 
-<div class="min-h-screen bg-gradient-to-br from-slate-50 via-purple-50 to-indigo-100 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
+<div class="min-h-screen bg-gradient-to-br from-slate-50 via-purple-50 to-indigo-100">
    <!-- Modern Material Design Header -->
    <header class="bg-gradient-to-r from-purple-600 via-purple-700 to-indigo-800 shadow-xl relative overflow-hidden header-enhanced backdrop-blur-enhanced">
       <div class="absolute inset-0 opacity-10">

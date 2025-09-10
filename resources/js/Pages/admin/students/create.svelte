@@ -79,7 +79,7 @@
    <title>Tambah Siswa - NETSA Admin</title>
 </svelte:head>
 
-<div class="min-h-screen bg-gradient-to-br from-slate-50 via-red-50 to-rose-100 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
+<div class="min-h-screen bg-gradient-to-br from-slate-50 via-red-50 to-rose-100">
    <!-- Modern Material Design Header -->
    <header class="bg-gradient-to-r from-red-600 via-red-700 to-rose-800 shadow-xl relative overflow-hidden header-enhanced">
       <!-- Background Pattern -->

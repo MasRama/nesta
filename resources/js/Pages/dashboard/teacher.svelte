@@ -189,7 +189,7 @@
    }
 </style>
 
-<div class="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
+<div class="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100">
    <!-- Modern Material Design Header -->
    <header class="bg-gradient-to-r from-blue-600 via-blue-700 to-indigo-800 shadow-xl relative overflow-hidden header-enhanced backdrop-blur-enhanced">
       <div class="absolute inset-0 opacity-10">
@@ -876,10 +876,7 @@
                                  </div>
                               </div>
                               <div class="ml-6 flex items-center space-x-3">
-                                 <span class="inline-flex items-center px-4 py-2 rounded-full text-xs font-bold shadow-md
-                                    {exam.status === 'active' ? 'bg-gradient-to-r from-green-400 to-green-600 text-white' : 
-                                      exam.status === 'draft' ? 'bg-gradient-to-r from-yellow-400 to-orange-500 text-white' : 
-                                      'bg-gradient-to-r from-gray-400 to-gray-600 text-white'}">
+                                 <span class="inline-flex items-center px-4 py-2 rounded-full text-xs font-bold shadow-md {exam.status === 'active' ? 'bg-gradient-to-r from-green-400 to-green-600 text-white' : exam.status === 'draft' ? 'bg-gradient-to-r from-yellow-400 to-orange-500 text-white' : 'bg-gradient-to-r from-gray-400 to-gray-600 text-white'}">
                                     {exam.status}
                                  </span>
                                  <button 

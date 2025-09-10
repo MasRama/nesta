@@ -1,6 +1,6 @@
 <script>
    import { router } from '@inertiajs/svelte';
-   import DarkModeToggle from '../../../Components/DarkModeToggle.svelte';
+
    
    export let students = [];
    export let total = 0;
@@ -151,7 +151,7 @@
    <title>Manajemen Siswa - NETSA Admin</title>
 </svelte:head>
 
-<div class="min-h-screen bg-gradient-to-br from-slate-50 via-red-50 to-rose-100 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
+<div class="min-h-screen bg-gradient-to-br from-slate-50 via-red-50 to-rose-100">
    <!-- Modern Material Design Header -->
    <header class="bg-gradient-to-r from-red-600 via-red-700 to-rose-800 shadow-xl relative overflow-hidden header-enhanced">
       <!-- Background Pattern -->
@@ -188,9 +188,6 @@
                   </div>
                </div>
                <div class="flex items-center space-x-3">
-                  <div class="bg-white/10 hover:bg-white/20 p-2 rounded-xl transition-all duration-200 backdrop-blur-sm border border-white/20 hover:border-white/30">
-                     <DarkModeToggle />
-                  </div>
                   <img src={user.profile_image || '/images/default-avatar.png'} alt="Profile" class="h-10 w-10 rounded-full border-2 border-white/30">
                   <button 
                      on:click={logout}

@@ -30,11 +30,11 @@
   }
   
   .nav-link {
-    @apply px-4 py-2 text-gray-600 dark:text-gray-200 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors duration-300;
+    @apply px-4 py-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors duration-300;
   }
 
   .nav-link.active {
-    @apply bg-primary-50 dark:bg-gray-800 text-primary-600;
+    @apply bg-primary-50 text-primary-600;
   }
  
   .gradient-text {
@@ -82,7 +82,5 @@
     border-radius: 3px;
   }
 
-  .dark .side-menu {
-    border-color: theme('colors.gray.700');
-  }
+
 }
