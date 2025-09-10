@@ -16,6 +16,7 @@
    let showImportModal = false;
    let csvFile = null;
    let importResult = null;
+   let currentSection = 'students'; // Tab navigation state
    
    function handleSearch() {
       const params = new URLSearchParams();
@@ -124,6 +125,25 @@
    function logout() {
       router.post('/logout');
    }
+   
+   function navigateToSection(section) {
+      currentSection = section;
+      if (section === 'overview') {
+         router.visit('/dashboard/admin');
+      } else if (section === 'users') {
+         // TODO: Navigate to users management when available
+         console.log('Navigate to users management');
+      } else if (section === 'classes') {
+         // TODO: Navigate to classes management when available
+         console.log('Navigate to classes management');
+      } else if (section === 'reports') {
+         // TODO: Navigate to reports when available
+         console.log('Navigate to reports');
+      } else if (section === 'system') {
+         // TODO: Navigate to system settings when available
+         console.log('Navigate to system settings');
+      }
+   }
 </script>
 
 <svelte:head>
@@ -149,35 +169,161 @@
       <div class="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
          <div class="flex justify-between items-center h-20">
             <div class="flex items-center space-x-4">
-               <button
-                  on:click={() => router.visit('/dashboard/admin')}
-                  aria-label="Kembali ke dashboard admin"
-                  class="w-12 h-12 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center hover:bg-white/30 transition-colors"
-               >
+               <div class="w-12 h-12 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center">
                   <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
                   </svg>
-               </button>
+               </div>
                <div>
-                  <h1 class="text-2xl font-bold text-white">Manajemen Siswa</h1>
-                  <p class="text-red-100 text-sm">Portal Administrasi Data Siswa</p>
+                  <h1 class="text-2xl font-bold text-white">Dashboard Administrator</h1>
+                  <p class="text-red-100 text-sm">Portal Manajemen NETSA</p>
                </div>
             </div>
-            <div class="flex items-center space-x-4">
-               <div class="text-right">
-                  <p class="text-white font-medium">{user.name}</p>
-                  <p class="text-red-100 text-sm">Administrator</p>
+            <div class="flex items-center space-x-6">
+               <div class="hidden md:flex items-center space-x-3 bg-white/10 backdrop-blur-sm rounded-xl px-4 py-2">
+                  <span class="text-white font-medium">Selamat datang, {user.name}</span>
+                  <div class="w-8 h-8 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center text-white text-sm font-medium">
+                     👑
+                  </div>
                </div>
-               <button
-                  on:click={logout}
-                  class="bg-white/20 backdrop-blur-sm text-white px-4 py-2 rounded-xl hover:bg-white/30 transition-colors border border-white/20"
-               >
-                  Logout
-               </button>
+               <div class="flex items-center space-x-3">
+                  <img src={user.profile_image || '/images/default-avatar.png'} alt="Profile" class="h-10 w-10 rounded-full border-2 border-white/30">
+                  <button 
+                     on:click={logout}
+                     class="bg-white/10 hover:bg-white/20 text-white px-4 py-2 rounded-xl font-medium transition-all duration-200 backdrop-blur-sm border border-white/20 hover:border-white/30"
+                  >
+                     Keluar
+                  </button>
+               </div>
             </div>
          </div>
       </div>
    </header>
+
+   <!-- Modern Material Design Navigation -->
+   <nav class="bg-white/90 backdrop-blur-md border-b border-red-200/30 sticky top-0 z-40 shadow-sm">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+         <div class="flex space-x-2 py-4">
+            <button 
+               class="px-6 py-3 rounded-xl font-medium text-sm nav-btn-enhanced"
+               class:bg-gradient-to-r={currentSection === 'overview'}
+               class:from-red-600={currentSection === 'overview'}
+               class:to-rose-600={currentSection === 'overview'}
+               class:text-white={currentSection === 'overview'}
+               class:shadow-lg={currentSection === 'overview'}
+               class:bg-gray-100={currentSection !== 'overview'}
+               class:text-gray-700={currentSection !== 'overview'}
+               class:hover:bg-gray-200={currentSection !== 'overview'}
+               on:click={() => navigateToSection('overview')}
+            >
+               <div class="flex items-center space-x-2">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+                  </svg>
+                  <span>Ringkasan</span>
+               </div>
+            </button>
+            <button 
+               class="px-6 py-3 rounded-xl font-medium text-sm nav-btn-enhanced"
+               class:bg-gradient-to-r={currentSection === 'users'}
+               class:from-blue-600={currentSection === 'users'}
+               class:to-blue-700={currentSection === 'users'}
+               class:text-white={currentSection === 'users'}
+               class:shadow-lg={currentSection === 'users'}
+               class:bg-gray-100={currentSection !== 'users'}
+               class:text-gray-700={currentSection !== 'users'}
+               class:hover:bg-gray-200={currentSection !== 'users'}
+               on:click={() => navigateToSection('users')}
+            >
+               <div class="flex items-center space-x-2">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z"/>
+                  </svg>
+                  <span>Manajemen User</span>
+               </div>
+            </button>
+            <button
+               class="px-6 py-3 rounded-xl font-medium text-sm nav-btn-enhanced"
+               class:bg-gradient-to-r={currentSection === 'students'}
+               class:from-teal-600={currentSection === 'students'}
+               class:to-cyan-600={currentSection === 'students'}
+               class:text-white={currentSection === 'students'}
+               class:shadow-lg={currentSection === 'students'}
+               class:bg-gray-100={currentSection !== 'students'}
+               class:text-gray-700={currentSection !== 'students'}
+               class:hover:bg-gray-200={currentSection !== 'students'}
+               on:click={() => navigateToSection('students')}
+            >
+               <div class="flex items-center space-x-2">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 14l9-5-9-5-9 5 9 5z"/>
+                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 14l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14z"/>
+                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 14l9-5-9-5-9 5 9 5zm0 0l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14z"/>
+                  </svg>
+                  <span>Manajemen Siswa</span>
+               </div>
+            </button>
+            <button
+               class="px-6 py-3 rounded-xl font-medium text-sm nav-btn-enhanced"
+               class:bg-gradient-to-r={currentSection === 'classes'}
+               class:from-green-600={currentSection === 'classes'}
+               class:to-emerald-600={currentSection === 'classes'}
+               class:text-white={currentSection === 'classes'}
+               class:shadow-lg={currentSection === 'classes'}
+               class:bg-gray-100={currentSection !== 'classes'}
+               class:text-gray-700={currentSection !== 'classes'}
+               class:hover:bg-gray-200={currentSection !== 'classes'}
+               on:click={() => navigateToSection('classes')}
+            >
+               <div class="flex items-center space-x-2">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/>
+                  </svg>
+                  <span>Manajemen Kelas</span>
+               </div>
+            </button>
+            <button 
+               class="px-6 py-3 rounded-xl font-medium text-sm nav-btn-enhanced"
+               class:bg-gradient-to-r={currentSection === 'reports'}
+               class:from-purple-600={currentSection === 'reports'}
+               class:to-pink-600={currentSection === 'reports'}
+               class:text-white={currentSection === 'reports'}
+               class:shadow-lg={currentSection === 'reports'}
+               class:bg-gray-100={currentSection !== 'reports'}
+               class:text-gray-700={currentSection !== 'reports'}
+               class:hover:bg-gray-200={currentSection !== 'reports'}
+               on:click={() => navigateToSection('reports')}
+            >
+               <div class="flex items-center space-x-2">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                  </svg>
+                  <span>Laporan</span>
+               </div>
+            </button>
+            <button 
+               class="px-6 py-3 rounded-xl font-medium text-sm nav-btn-enhanced"
+               class:bg-gradient-to-r={currentSection === 'system'}
+               class:from-yellow-600={currentSection === 'system'}
+               class:to-orange-600={currentSection === 'system'}
+               class:text-white={currentSection === 'system'}
+               class:shadow-lg={currentSection === 'system'}
+               class:bg-gray-100={currentSection !== 'system'}
+               class:text-gray-700={currentSection !== 'system'}
+               class:hover:bg-gray-200={currentSection !== 'system'}
+               on:click={() => navigateToSection('system')}
+            >
+               <div class="flex items-center space-x-2">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
+                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                  </svg>
+                  <span>Sistem</span>
+               </div>
+            </button>
+         </div>
+      </div>
+   </nav>
 
    <!-- Main Content -->
    <main class="max-w-7xl mx-auto py-8 sm:px-6 lg:px-8">
@@ -521,5 +667,72 @@
    button:hover::before {
       width: 300px;
       height: 300px;
+   }
+
+   /* Enhanced Navigation Button Styles */
+   .nav-btn-enhanced {
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      position: relative;
+      overflow: hidden;
+      backdrop-filter: blur(8px);
+      border: 1px solid transparent;
+   }
+
+   .nav-btn-enhanced:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 8px 25px -8px rgba(0, 0, 0, 0.2);
+   }
+
+   .nav-btn-enhanced:active {
+      transform: translateY(0);
+   }
+
+   /* Gradient Animation */
+   .nav-btn-enhanced.bg-gradient-to-r {
+      background-size: 200% 200%;
+      animation: gradientShift 3s ease infinite;
+   }
+
+   @keyframes gradientShift {
+      0% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+      100% { background-position: 0% 50%; }
+   }
+
+   /* Ripple Effect */
+   .nav-btn-enhanced::before {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 0;
+      height: 0;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.3);
+      transform: translate(-50%, -50%);
+      transition: width 0.6s, height 0.6s;
+   }
+
+   .nav-btn-enhanced:active::before {
+      width: 300px;
+      height: 300px;
+   }
+
+   /* Modern Glass Effect */
+   nav {
+      backdrop-filter: blur(20px) saturate(180%);
+      -webkit-backdrop-filter: blur(20px) saturate(180%);
+      background: rgba(255, 255, 255, 0.85);
+      border: 1px solid rgba(209, 213, 219, 0.3);
+   }
+
+   /* Smooth Scroll Behavior */
+   html {
+      scroll-behavior: smooth;
+   }
+
+   /* Enhanced Shadow for Active Navigation */
+   .nav-btn-enhanced.shadow-lg {
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
    }
 </style>
