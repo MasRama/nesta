@@ -214,7 +214,7 @@ class SchoolAuthController {
    private async getAdminDashboard(user: any, response: Response) {
       // Get system statistics
       const stats = {
-         total_students: await DB.from("users").where("role", "student").count("* as count").first(),
+         total_students: await DB.from("students").where("is_active", true).count("* as count").first(),
          total_teachers: await DB.from("users").where("role", "teacher").count("* as count").first(),
          total_parents: await DB.from("users").where("role", "parent").count("* as count").first(),
          total_classes: await DB.from("classes").count("* as count").first(),

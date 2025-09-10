@@ -1,6 +1,8 @@
 <script>
    import { router } from '@inertiajs/svelte';
    import { onMount } from 'svelte';
+   import AdminHeader from '../../Components/AdminHeader.svelte';
+   import AdminNavigation from '../../Components/AdminNavigation.svelte';
 
    
    export let user;
@@ -20,10 +22,6 @@
       if (section === 'students') {
          loadStudents();
       }
-   }
-   
-   function logout() {
-      router.post('/logout');
    }
    
    function formatDate(dateString) {
@@ -105,102 +103,8 @@
 </svelte:head>
 
 <div class="min-h-screen bg-gradient-to-br from-slate-50 via-red-50 to-rose-100 transition-colors duration-300">
-   <!-- Modern Material Design Header -->
-   <header class="bg-gradient-to-r from-red-600 via-red-700 to-rose-800 shadow-xl relative overflow-hidden header-enhanced">
-      <!-- Background Pattern -->
-      <div class="absolute inset-0 opacity-10">
-         <div class="absolute top-0 left-0 w-full h-full">
-            <svg width="60" height="60" viewBox="0 0 60 60" xmlns="http://www.w3.org/2000/svg">
-               <g fill="none" fill-rule="evenodd">
-                  <g fill="#ffffff" fill-opacity="0.1">
-                     <circle cx="30" cy="30" r="2"/>
-                  </g>
-               </g>
-            </svg>
-         </div>
-      </div>
-      
-      <div class="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-         <div class="flex justify-between items-center h-20">
-            <div class="flex items-center space-x-4">
-               <div class="w-12 h-12 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center">
-                  <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
-                  </svg>
-               </div>
-               <div>
-                  <h1 class="text-2xl font-bold text-white">Dashboard Administrator</h1>
-                  <p class="text-red-100 text-sm">Portal Manajemen NETSA</p>
-               </div>
-            </div>
-            <div class="flex items-center space-x-6">
-               <div class="hidden md:flex items-center space-x-3 bg-white/10 backdrop-blur-sm rounded-xl px-4 py-2">
-                  <span class="text-white font-medium">Selamat datang, {user.name}</span>
-                  <div class="w-8 h-8 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center text-white text-sm font-medium">
-                     👑
-                  </div>
-               </div>
-               <div class="flex items-center space-x-3">
-                  <img src={user.profile_image || '/images/default-avatar.png'} alt="Profile" class="h-10 w-10 rounded-full border-2 border-white/30">
-                  <button 
-                     on:click={logout}
-                     class="bg-white/10 hover:bg-white/20 text-white px-4 py-2 rounded-xl font-medium transition-all duration-200 backdrop-blur-sm border border-white/20 hover:border-white/30"
-                  >
-                     Keluar
-                  </button>
-               </div>
-            </div>
-         </div>
-      </div>
-   </header>
-
-   <!-- Modern Material Design Navigation -->
-   <nav class="bg-white/90 backdrop-blur-md border-b border-red-200/30 sticky top-0 z-40 shadow-sm">
-      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-         <div class="flex space-x-2 py-4">
-            <button 
-               class="px-6 py-3 rounded-xl font-medium text-sm nav-btn-enhanced"
-               class:bg-gradient-to-r={currentSection === 'overview'}
-               class:from-red-600={currentSection === 'overview'}
-               class:to-rose-600={currentSection === 'overview'}
-               class:text-white={currentSection === 'overview'}
-               class:shadow-lg={currentSection === 'overview'}
-               class:bg-gray-100={currentSection !== 'overview'}
-               class:text-gray-700={currentSection !== 'overview'}
-               class:hover:bg-gray-200={currentSection !== 'overview'}
-               on:click={() => navigateToSection('overview')}
-            >
-               <div class="flex items-center space-x-2">
-                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
-                  </svg>
-                  <span>Ringkasan</span>
-               </div>
-            </button>
-            <button
-               class="px-6 py-3 rounded-xl font-medium text-sm nav-btn-enhanced"
-               class:bg-gradient-to-r={currentSection === 'students'}
-               class:from-teal-600={currentSection === 'students'}
-               class:to-cyan-600={currentSection === 'students'}
-               class:text-white={currentSection === 'students'}
-               class:shadow-lg={currentSection === 'students'}
-               class:bg-gray-100={currentSection !== 'students'}
-               class:text-gray-700={currentSection !== 'students'}
-               class:hover:bg-gray-200={currentSection !== 'students'}
-               on:click={() => navigateToSection('students')}
-            >
-               <div class="flex items-center space-x-2">
-                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 14l9-5-9-5-9 5 9 5z"/>
-                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 14l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14z"/>
-                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 14l9-5-9-5-9 5 9 5zm0 0l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14z"/>
-                  </svg>
-                  <span>Manajemen Siswa</span>
-               </div>
-            </button>
-         </div>
-      </div>
-   </nav>
+   <AdminHeader {user} />
+   <AdminNavigation {currentSection} />
 
    <!-- Main Content -->
    <main class="max-w-7xl mx-auto py-8 sm:px-6 lg:px-8">
@@ -450,64 +354,6 @@
 		transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 	}
 
-	/* Enhanced Header Animations */
-	.header-enhanced {
-		transition: all 0.4s ease;
-		position: relative;
-		overflow: hidden;
-	}
-
-	.header-enhanced::before {
-		content: '';
-		position: absolute;
-		top: 0;
-		left: -100%;
-		width: 100%;
-		height: 100%;
-		background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
-		transition: left 0.8s ease;
-	}
-
-	.header-enhanced:hover::before {
-		left: 100%;
-	}
-
-	/* Navigation Button Enhancements */
-	.nav-btn-enhanced {
-		position: relative;
-		overflow: hidden;
-		transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-	}
-
-	.nav-btn-enhanced::before {
-		content: '';
-		position: absolute;
-		top: 50%;
-		left: 50%;
-		width: 0;
-		height: 0;
-		background: rgba(255, 255, 255, 0.2);
-		border-radius: 50%;
-		transition: all 0.4s ease;
-		transform: translate(-50%, -50%);
-		z-index: 0;
-	}
-
-	.nav-btn-enhanced:hover::before {
-		width: 300px;
-		height: 300px;
-	}
-
-	.nav-btn-enhanced:hover {
-		transform: translateY(-2px) scale(1.05);
-		box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
-	}
-
-	.nav-btn-enhanced > * {
-		position: relative;
-		z-index: 1;
-	}
-
 	/* Stats Card Enhancements */
 	.stats-card-enhanced {
 		position: relative;
@@ -618,8 +464,5 @@
 	.stagger-3 { animation-delay: 0.3s; }
 	.stagger-4 { animation-delay: 0.4s; }
 
-	/* Custom styles for admin dashboard */
-	.admin-gradient {
-		background: linear-gradient(135deg, #dc2626 0%, #991b1b 100%);
-	}
+
 </style>

@@ -157,35 +157,10 @@
       100% { transform: rotate(360deg); }
    }
 
-   /* Floating animation for icons */
-   .floating-icon {
-      animation: float 3s ease-in-out infinite;
-   }
-
-   @keyframes float {
-      0%, 100% { transform: translateY(0px); }
-      50% { transform: translateY(-10px); }
-   }
-
    /* Enhanced backdrop blur */
    .backdrop-blur-enhanced {
       backdrop-filter: blur(20px) saturate(180%);
       -webkit-backdrop-filter: blur(20px) saturate(180%);
-   }
-
-   /* Enhanced shadow effects */
-   .shadow-enhanced {
-      box-shadow: 
-         0 4px 6px -1px rgba(0, 0, 0, 0.1),
-         0 2px 4px -1px rgba(0, 0, 0, 0.06),
-         0 0 0 1px rgba(255, 255, 255, 0.1) inset;
-   }
-
-   .shadow-enhanced:hover {
-      box-shadow: 
-         0 20px 25px -5px rgba(0, 0, 0, 0.1),
-         0 10px 10px -5px rgba(0, 0, 0, 0.04),
-         0 0 0 1px rgba(255, 255, 255, 0.2) inset;
    }
 </style>
 
@@ -784,6 +759,7 @@
                                                 class="bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white p-2 rounded-lg text-xs font-semibold shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200"
                                                 on:click={() => editJournal(journal.id)}
                                                 title="Edit Jurnal"
+                                                aria-label="Edit Jurnal"
                                              >
                                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
@@ -792,6 +768,7 @@
                                              <button 
                                                 class="bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-600 hover:to-green-700 text-white p-2 rounded-lg text-xs font-semibold shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200"
                                                 title="Lihat Detail"
+                                                aria-label="Lihat Detail Jurnal"
                                              >
                                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
