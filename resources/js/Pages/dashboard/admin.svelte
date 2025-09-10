@@ -7,6 +7,7 @@
    
    export let user;
    export let stats = {};
+   export let appVersion;
    
    let currentSection = 'overview';
    let isLoading = false;
@@ -80,20 +81,7 @@
       }
    }
    
-   function createNewUser() {
-      router.visit('/admin/users/create');
-   }
-   
-   function createNewClass() {
-      router.visit('/admin/classes/create');
-   }
-   
-   function runSeeder() {
-      if (confirm('Apakah Anda yakin ingin menjalankan seeder? Ini akan menghapus semua data existing.')) {
-         // TODO: Implement seeder endpoint
-         alert('Seeder akan dijalankan (belum diimplementasi)');
-      }
-   }
+
 </script>
 
 
@@ -205,60 +193,7 @@
                </div>
             </div>
 
-            <!-- Enhanced Quick Actions -->
-            <div class="content-card-enhanced bg-white/80 backdrop-blur-md shadow-2xl rounded-3xl mb-8 border border-white/20 fade-in-up">
-               <div class="px-8 py-8">
-                  <div class="flex items-center mb-6">
-                     <div class="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl flex items-center justify-center mr-4">
-                        <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
-                        </svg>
-                     </div>
-                     <div>
-                        <h3 class="text-2xl font-bold text-gray-900">Aksi Cepat</h3>
-                        <p class="text-gray-600 text-sm">Shortcut untuk fungsi-fungsi utama sistem</p>
-                     </div>
-                  </div>
-                  <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                     <button 
-                        on:click={createNewUser}
-                        class="btn-pulse group bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white px-6 py-4 rounded-2xl font-medium transition-all duration-300 transform hover:scale-105 hover:shadow-xl flex items-center justify-center space-x-3"
-                     >
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
-                        </svg>
-                        <span>Tambah User</span>
-                     </button>
-                     <button 
-                        on:click={createNewClass}
-                        class="btn-pulse group bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white px-6 py-4 rounded-2xl font-medium transition-all duration-300 transform hover:scale-105 hover:shadow-xl flex items-center justify-center space-x-3"
-                     >
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/>
-                        </svg>
-                        <span>Buat Kelas</span>
-                     </button>
-                     <button 
-                        on:click={() => navigateToSection('reports')}
-                        class="btn-pulse group bg-gradient-to-r from-purple-500 to-pink-600 hover:from-purple-600 hover:to-pink-700 text-white px-6 py-4 rounded-2xl font-medium transition-all duration-300 transform hover:scale-105 hover:shadow-xl flex items-center justify-center space-x-3"
-                     >
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
-                        </svg>
-                        <span>Lihat Laporan</span>
-                     </button>
-                     <button 
-                        on:click={runSeeder}
-                        class="btn-pulse group bg-gradient-to-r from-orange-500 to-red-600 hover:from-orange-600 hover:to-red-700 text-white px-6 py-4 rounded-2xl font-medium transition-all duration-300 transform hover:scale-105 hover:shadow-xl flex items-center justify-center space-x-3"
-                     >
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
-                        </svg>
-                        <span>Run Seeder</span>
-                     </button>
-                  </div>
-               </div>
-            </div>
+
 
             <!-- Enhanced System Overview -->
             <div class="content-card-enhanced bg-white/80 backdrop-blur-md shadow-2xl rounded-3xl border border-white/20 fade-in-up">
@@ -284,7 +219,7 @@
                            </div>
                            <dt class="text-sm font-semibold text-blue-900">Versi Sistem</dt>
                         </div>
-                        <dd class="text-lg font-bold text-blue-800">NETSA v1.0.0</dd>
+                        <dd class="text-lg font-bold text-blue-800">{appVersion || 'NETSA v1.0.0'}</dd>
                      </div>
                      <div class="bg-gradient-to-br from-green-50 to-emerald-100 rounded-2xl p-6 border border-green-200/50">
                         <div class="flex items-center mb-3">

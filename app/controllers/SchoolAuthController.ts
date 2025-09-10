@@ -3,6 +3,8 @@ import Authenticate from "../services/Authenticate";
 import { Response, Request } from "../../type"; 
 import { randomUUID } from "crypto";
 import dayjs from "dayjs";
+import * as fs from "fs";
+import * as path from "path";
 
 class SchoolAuthController {
    /**
@@ -220,9 +222,20 @@ class SchoolAuthController {
          total_classes: await DB.from("classes").count("* as count").first(),
       };
 
+      // Get version from package.json
+      let appVersion = "1.0.0"; // fallback version
+      try {
+         const packageJsonPath = path.join(process.cwd(), "package.json");
+         const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, "utf8"));
+         appVersion = packageJson.version || "1.0.0";
+      } catch (error) {
+         console.warn("Could not read version from package.json:", error);
+      }
+
       return response.inertia("dashboard/admin", {
          user,
-         stats
+         stats,
+         appVersion
       });
    }
 }
