@@ -369,51 +369,41 @@
                </div>
 
                <!-- Action Buttons -->
-               <div class="flex flex-wrap gap-3">
-                  <button
-                     on:click={createStudent}
-                     class="px-6 py-3 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-xl hover:from-green-700 hover:to-emerald-700 transition-all shadow-lg font-medium"
-                  >
-                     <div class="flex items-center space-x-2">
+               <div class="flex flex-col sm:flex-row gap-3">
+                  <!-- Primary Actions -->
+                  <div class="flex gap-3">
+                     <button
+                        on:click={createStudent}
+                        class="px-6 py-3 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-xl hover:from-green-700 hover:to-emerald-700 transition-all shadow-lg font-medium flex items-center space-x-2"
+                     >
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
                         </svg>
                         <span>Tambah Siswa</span>
-                     </div>
-                  </button>
-                  <button
-                     on:click={() => showImportModal = true}
-                     class="px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-xl hover:from-purple-700 hover:to-pink-700 transition-all shadow-lg font-medium"
-                  >
-                     <div class="flex items-center space-x-2">
+                     </button>
+                  </div>
+                  
+                  <!-- Secondary Actions -->
+                  <div class="flex gap-2">
+                     <button
+                        on:click={() => showImportModal = true}
+                        class="px-4 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl hover:from-blue-700 hover:to-indigo-700 transition-all shadow-lg font-medium flex items-center space-x-2"
+                     >
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 19l3 3m0 0l3-3m-3 3V10"/>
                         </svg>
-                        <span>Import CSV</span>
-                     </div>
-                  </button>
-                  <button
-                     on:click={exportCSV}
-                     class="px-6 py-3 bg-gradient-to-r from-orange-600 to-red-600 text-white rounded-xl hover:from-orange-700 hover:to-red-700 transition-all shadow-lg font-medium"
-                  >
-                     <div class="flex items-center space-x-2">
+                        <span class="hidden sm:inline">Import</span>
+                     </button>
+                     <button
+                        on:click={exportCSV}
+                        class="px-4 py-3 bg-gradient-to-r from-orange-600 to-red-600 text-white rounded-xl hover:from-orange-700 hover:to-red-700 transition-all shadow-lg font-medium flex items-center space-x-2"
+                     >
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
                         </svg>
-                        <span>Export CSV</span>
-                     </div>
-                  </button>
-                  <button
-                     on:click={downloadTemplate}
-                     class="px-6 py-3 bg-gradient-to-r from-gray-600 to-gray-700 text-white rounded-xl hover:from-gray-700 hover:to-gray-800 transition-all shadow-lg font-medium"
-                  >
-                     <div class="flex items-center space-x-2">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
-                        </svg>
-                        <span>Template CSV</span>
-                     </div>
-                  </button>
+                        <span class="hidden sm:inline">Export</span>
+                     </button>
+                  </div>
                </div>
             </div>
          </div>
@@ -476,51 +466,96 @@
                </table>
             </div>
          
-         <!-- Pagination -->
+         <!-- Enhanced Pagination -->
          {#if totalPages > 1}
-            <div class="bg-white px-4 py-3 flex items-center justify-between border-t border-gray-200 sm:px-6">
-               <div class="flex-1 flex justify-between sm:hidden">
+            <div class="bg-white/80 backdrop-blur-sm px-6 py-4 border-t border-gray-200/50 rounded-b-2xl">
+               <!-- Mobile Pagination -->
+               <div class="flex justify-between items-center sm:hidden">
                   <button
                      on:click={() => handlePageChange(page - 1)}
                      disabled={page <= 1}
-                     class="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50"
+                     class="flex items-center px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-sm"
                   >
-                     Previous
+                     <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+                     </svg>
+                     Sebelumnya
                   </button>
+                  <span class="text-sm text-gray-600 font-medium">
+                     {page} dari {totalPages}
+                  </span>
                   <button
                      on:click={() => handlePageChange(page + 1)}
                      disabled={page >= totalPages}
-                     class="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50"
+                     class="flex items-center px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-sm"
                   >
-                     Next
+                     Selanjutnya
+                     <svg class="w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                     </svg>
                   </button>
                </div>
-               <div class="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
-                  <div>
-                     <p class="text-sm text-gray-700">
-                        Menampilkan <span class="font-medium">{((page - 1) * limit) + 1}</span> sampai 
-                        <span class="font-medium">{Math.min(page * limit, total)}</span> dari 
-                        <span class="font-medium">{total}</span> siswa
+               
+               <!-- Desktop Pagination -->
+               <div class="hidden sm:flex items-center justify-between">
+                  <div class="flex items-center space-x-2">
+                     <p class="text-sm text-gray-600">
+                        Menampilkan 
+                        <span class="font-semibold text-gray-900">{((page - 1) * limit) + 1}</span> - 
+                        <span class="font-semibold text-gray-900">{Math.min(page * limit, total)}</span> dari 
+                        <span class="font-semibold text-gray-900">{total}</span> siswa
                      </p>
                   </div>
-                  <div>
-                     <nav class="relative z-0 inline-flex rounded-md shadow-sm -space-x-px">
-                        {#each Array(totalPages) as _, i}
+                  
+                  <div class="flex items-center space-x-1">
+                     <!-- Previous Button -->
+                     <button
+                        on:click={() => handlePageChange(page - 1)}
+                        disabled={page <= 1}
+                        class="flex items-center px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 hover:text-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                     >
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+                        </svg>
+                     </button>
+                     
+                     <!-- Page Numbers -->
+                     <div class="flex space-x-1">
+                        {#each Array(Math.min(totalPages, 7)) as _, i}
+                           {@const pageNum = totalPages <= 7 ? i + 1 : 
+                              page <= 4 ? i + 1 :
+                              page >= totalPages - 3 ? totalPages - 6 + i :
+                              page - 3 + i}
                            <button
-                              on:click={() => handlePageChange(i + 1)}
-                              class="relative inline-flex items-center px-4 py-2 border text-sm font-medium"
-                              class:bg-blue-50={page === i + 1}
-                              class:border-blue-500={page === i + 1}
-                              class:text-blue-600={page === i + 1}
-                              class:bg-white={page !== i + 1}
-                              class:border-gray-300={page !== i + 1}
-                              class:text-gray-500={page !== i + 1}
-                              class:hover:bg-gray-50={page !== i + 1}
+                              on:click={() => handlePageChange(pageNum)}
+                              class="px-4 py-2 text-sm font-medium rounded-lg transition-all duration-200"
+                              class:bg-gradient-to-r={page === pageNum}
+                              class:from-blue-600={page === pageNum}
+                              class:to-indigo-600={page === pageNum}
+                              class:text-white={page === pageNum}
+                              class:shadow-lg={page === pageNum}
+                              class:bg-white={page !== pageNum}
+                              class:text-gray-700={page !== pageNum}
+                              class:border={page !== pageNum}
+                              class:border-gray-300={page !== pageNum}
+                              class:hover:bg-gray-50={page !== pageNum}
+                              class:hover:border-gray-400={page !== pageNum}
                            >
-                              {i + 1}
+                              {pageNum}
                            </button>
                         {/each}
-                     </nav>
+                     </div>
+                     
+                     <!-- Next Button -->
+                     <button
+                        on:click={() => handlePageChange(page + 1)}
+                        disabled={page >= totalPages}
+                        class="flex items-center px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 hover:text-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                     >
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                        </svg>
+                     </button>
                   </div>
                </div>
             </div>
