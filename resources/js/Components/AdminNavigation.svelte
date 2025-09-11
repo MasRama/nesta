@@ -29,8 +29,8 @@
          label: 'Manajemen Siswa',
          icon: 'M12 14l9-5-9-5-9 5 9 5z M12 14l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14z M12 14l9-5-9-5-9 5 9 5zm0 0l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14z',
          colors: {
-            from: 'from-teal-600',
-            to: 'to-cyan-600'
+            from: 'from-red-600',
+            to: 'to-rose-600'
          }
       }
    ];
@@ -52,13 +52,15 @@
             <button 
                class="px-6 py-3 rounded-xl font-medium text-sm nav-btn-enhanced"
                class:bg-gradient-to-r={currentSection === item.id}
-               class:{item.colors.from}={currentSection === item.id}
-               class:{item.colors.to}={currentSection === item.id}
+               class:from-red-600={currentSection === item.id}
+               class:to-rose-600={currentSection === item.id}
                class:text-white={currentSection === item.id}
                class:shadow-lg={currentSection === item.id}
-               class:bg-gray-100={currentSection !== item.id}
-               class:text-gray-700={currentSection !== item.id}
-               class:hover:bg-gray-200={currentSection !== item.id}
+               class:bg-white={currentSection !== item.id}
+               class:text-gray-800={currentSection !== item.id}
+               class:hover:bg-gray-50={currentSection !== item.id}
+               class:border={currentSection !== item.id}
+               class:border-gray-200={currentSection !== item.id}
                on:click={() => navigateToSection(item.id)}
             >
                <div class="flex items-center space-x-2">
