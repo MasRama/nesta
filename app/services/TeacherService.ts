@@ -1,0 +1,231 @@
+import DB from "./DB";
+import { randomUUID, createHash, pbkdf2Sync } from "crypto";
+
+interface TeacherData {
+    nip: string;
+    nama: string;
+    email: string;
+    password: string;
+    phone?: string;
+}
+
+interface ValidationError {
+    row?: number;
+    field: string;
+    message: string;
+    value: any;
+}
+
+class TeacherService {
+    /**
+     * Get all teachers with pagination and filters
+     */
+    async getTeachers(page: number = 1, limit: number = 10, search?: string) {
+        let query = DB.from('teachers').select('*').where('is_active', true);
+        
+        // Apply search filter
+        if (search) {
+            query = query.where(function() {
+                this.where('nama', 'like', `%${search}%`)
+                    .orWhere('nip', 'like', `%${search}%`)
+                    .orWhere('email', 'like', `%${search}%`);
+            });
+        }
+        
+
+        
+        // Get total count for pagination
+        const countQuery = query.clone();
+        const totalResult = await countQuery.count('* as count').first();
+        const totalCount = (totalResult as any)?.count || 0;
+        
+        // Apply pagination
+        const offset = (page - 1) * limit;
+        const teachers = await query.orderBy('created_at', 'desc').limit(limit).offset(offset);
+        
+        return {
+            data: teachers,
+            pagination: {
+                page,
+                limit,
+                total: totalCount,
+                totalPages: Math.ceil(totalCount / limit)
+            }
+        };
+    }
+    
+    /**
+     * Get teacher by ID
+     */
+    async getTeacherById(id: string) {
+        return await DB.from('teachers').where('id', id).where('is_active', true).first();
+    }
+    
+   /**
+     * Get teacher by NIP
+     */
+    async getTeacherByNIP(nip: string) {
+        return await DB.from('teachers').where('nip', nip).first();
+    }
+    
+    /**
+     * Get teacher by Email
+     */
+    async getTeacherByEmail(email: string) {
+        return await DB.from('teachers').where('email', email).first();
+    }
+    
+    /**
+     * Create new teacher
+     */
+    async createTeacher(data: TeacherData) {
+        const hashedPassword = this.hashPassword(data.password);
+        
+        const teacherData = {
+            id: randomUUID(),
+            nip: data.nip,
+            nama: data.nama,
+            email: data.email,
+            password: hashedPassword,
+            phone: data.phone || null,
+            is_active: true,
+            created_at: Date.now(),
+            updated_at: Date.now()
+        };
+        
+        await DB.from('teachers').insert(teacherData);
+        
+        // Return teacher without password
+        const { password, ...teacherWithoutPassword } = teacherData;
+        return teacherWithoutPassword;
+    }
+    
+    /**
+     * Update teacher
+     */
+    async updateTeacher(id: string, data: Partial<TeacherData>) {
+        const updateData: any = {
+            ...data,
+            updated_at: Date.now()
+        };
+        
+        // Hash password if provided
+        if (data.password) {
+            updateData.password = this.hashPassword(data.password);
+        }
+        
+        await DB.from('teachers').where('id', id).update(updateData);
+        
+        // Return updated teacher without password
+        const updatedTeacher = await this.getTeacherById(id);
+        if (updatedTeacher) {
+            const { password, ...teacherWithoutPassword } = updatedTeacher;
+            return teacherWithoutPassword;
+        }
+        return null;
+    }
+    
+    /**
+     * Delete teacher (soft delete)
+     */
+    async deleteTeacher(id: string) {
+        await DB.from('teachers').where('id', id).update({
+            is_active: false,
+            updated_at: Date.now()
+        });
+    }
+    
+
+    
+    /**
+     * Hash password using crypto
+     */
+    private hashPassword(password: string): string {
+        const salt = 'netsa_teacher_salt'; // In production, use a random salt
+        return pbkdf2Sync(password, salt, 10000, 64, 'sha512').toString('hex');
+    }
+    
+    /**
+     * Validate teacher data
+     */
+    validateTeacherData(data: any, row: number = 0): ValidationError[] {
+        const errors: ValidationError[] = [];
+
+        // Essential fields that must be present
+        const essentialFields = [
+            { field: 'nip', label: 'NIP' },
+            { field: 'nama', label: 'Nama' },
+            { field: 'email', label: 'Email' }
+        ];
+
+        // Check essential fields
+        for (const { field, label } of essentialFields) {
+            if (!data[field] || data[field].toString().trim() === '') {
+                errors.push({
+                    row,
+                    field,
+                    message: `${label} wajib diisi`,
+                    value: data[field]
+                });
+            }
+        }
+
+        // NIP validation - only validate if NIP is provided and not empty
+        if (data.nip && data.nip.toString().trim() !== '') {
+            const nip = data.nip.toString().trim();
+            if (!/^\d+$/.test(nip)) {
+                errors.push({
+                    row,
+                    field: 'nip',
+                    message: 'NIP harus berupa angka',
+                    value: data.nip
+                });
+            }
+        }
+
+        // Email validation - only validate if email is provided and not empty
+        if (data.email && data.email.toString().trim() !== '') {
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (!emailRegex.test(data.email.toString().trim())) {
+                errors.push({
+                    row,
+                    field: 'email',
+                    message: 'Format email tidak valid',
+                    value: data.email
+                });
+            }
+        }
+
+        // Phone validation - only validate if phone is provided
+        if (data.phone && data.phone.toString().trim() !== '') {
+            const phone = data.phone.toString().trim();
+            if (!/^[0-9+\-\s()]+$/.test(phone)) {
+                errors.push({
+                    row,
+                    field: 'phone',
+                    message: 'Format nomor telepon tidak valid',
+                    value: data.phone
+                });
+            }
+        }
+
+        // Status validation - only validate if status is provided
+        if (data.status && data.status.toString().trim() !== '') {
+            const validStatuses = ['active', 'inactive'];
+            if (!validStatuses.includes(data.status.toString().trim())) {
+                errors.push({
+                    row,
+                    field: 'status',
+                    message: 'Status harus "active" atau "inactive"',
+                    value: data.status
+                });
+            }
+        }
+
+
+
+        return errors;
+    }
+}
+
+export default new TeacherService();

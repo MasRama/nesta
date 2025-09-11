@@ -9,6 +9,7 @@ const AttendanceController_1 = __importDefault(require("../app/controllers/Atten
 const JournalController_1 = __importDefault(require("../app/controllers/JournalController"));
 const ExamController_1 = __importDefault(require("../app/controllers/ExamController"));
 const StudentController_1 = __importDefault(require("../app/controllers/StudentController"));
+const TeacherController_1 = __importDefault(require("../app/controllers/TeacherController"));
 const auth_1 = __importDefault(require("../app/middlewares/auth"));
 const roleAuth_1 = __importDefault(require("../app/middlewares/roleAuth"));
 const HomeController_1 = __importDefault(require("../app/controllers/HomeController"));
@@ -74,6 +75,14 @@ Route.post("/admin/students/import-csv", [auth_1.default, roleAuth_1.default.adm
 Route.get("/admin/students/export-csv", [auth_1.default, roleAuth_1.default.admin()], StudentController_1.default.exportCSV);
 Route.get("/admin/students/template-csv", [auth_1.default, roleAuth_1.default.admin()], StudentController_1.default.downloadTemplate);
 Route.get("/api/students", [auth_1.default, roleAuth_1.default.admin()], StudentController_1.default.getStudentsAPI);
+Route.get("/admin/teachers", [auth_1.default, roleAuth_1.default.admin()], TeacherController_1.default.index);
+Route.get("/admin/teachers/create", [auth_1.default, roleAuth_1.default.admin()], TeacherController_1.default.create);
+Route.post("/admin/teachers", [auth_1.default, roleAuth_1.default.admin()], TeacherController_1.default.store);
+Route.get("/admin/teachers/:id", [auth_1.default, roleAuth_1.default.admin()], TeacherController_1.default.show);
+Route.get("/admin/teachers/:id/edit", [auth_1.default, roleAuth_1.default.admin()], TeacherController_1.default.edit);
+Route.put("/admin/teachers/:id", [auth_1.default, roleAuth_1.default.admin()], TeacherController_1.default.update);
+Route.delete("/admin/teachers/:id", [auth_1.default, roleAuth_1.default.admin()], TeacherController_1.default.destroy);
+Route.get("/api/teachers", [auth_1.default, roleAuth_1.default.admin()], TeacherController_1.default.getTeachersAPI);
 Route.get("/assets/:file", AssetController_1.default.distFolder);
 Route.get("/*", AssetController_1.default.publicFolder);
 exports.default = Route;

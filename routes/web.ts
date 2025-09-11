@@ -4,6 +4,7 @@ import AttendanceController from "../app/controllers/AttendanceController";
 import JournalController from "../app/controllers/JournalController";
 import ExamController from "../app/controllers/ExamController";
 import StudentController from "../app/controllers/StudentController";
+import TeacherController from "../app/controllers/TeacherController";
 import Auth from "../app/middlewares/auth"
 import RoleAuth from "../app/middlewares/roleAuth";
 import HomeController from "../app/controllers/HomeController";
@@ -191,6 +192,34 @@ Route.get("/admin/students/template-csv", [Auth, RoleAuth.admin()], StudentContr
 
 // API Routes
 Route.get("/api/students", [Auth, RoleAuth.admin()], StudentController.getStudentsAPI);
+
+/**
+ * Teacher Management Routes (Admin Only)
+ * Routes for managing teachers in admin panel
+ * ------------------------------------------------
+ * GET    /admin/teachers - List all teachers
+ * GET    /admin/teachers/create - Show create teacher form
+ * POST   /admin/teachers - Store new teacher
+ * GET    /admin/teachers/:id - Show teacher details
+ * GET    /admin/teachers/:id/edit - Show edit teacher form
+ * PUT    /admin/teachers/:id - Update teacher
+ * DELETE /admin/teachers/:id - Delete teacher
+ */
+Route.get("/admin/teachers", [Auth, RoleAuth.admin()], TeacherController.index);
+Route.get("/admin/teachers/create", [Auth, RoleAuth.admin()], TeacherController.create);
+Route.post("/admin/teachers", [Auth, RoleAuth.admin()], TeacherController.store);
+Route.get("/admin/teachers/:id", [Auth, RoleAuth.admin()], TeacherController.show);
+Route.get("/admin/teachers/:id/edit", [Auth, RoleAuth.admin()], TeacherController.edit);
+Route.put("/admin/teachers/:id", [Auth, RoleAuth.admin()], TeacherController.update);
+Route.delete("/admin/teachers/:id", [Auth, RoleAuth.admin()], TeacherController.destroy);
+
+/**
+ * API Routes for Teachers
+ * API endpoints for teacher data
+ * ------------------------------------------------
+ * GET  /api/teachers - Get teachers data (AJAX)
+ */
+Route.get("/api/teachers", [Auth, RoleAuth.admin()], TeacherController.getTeachersAPI);
 
 /**
  * Static Asset Handling Routes
