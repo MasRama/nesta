@@ -5,6 +5,7 @@ import JournalController from "../app/controllers/JournalController";
 import ExamController from "../app/controllers/ExamController";
 import StudentController from "../app/controllers/StudentController";
 import TeacherController from "../app/controllers/TeacherController";
+import SubjectController from "../app/controllers/SubjectController";
 import Auth from "../app/middlewares/auth"
 import RoleAuth from "../app/middlewares/roleAuth";
 import HomeController from "../app/controllers/HomeController";
@@ -195,14 +196,14 @@ Route.get("/api/students", [Auth, RoleAuth.admin()], StudentController.getStuden
 
 /**
  * Teacher Management Routes (Admin Only)
- * Routes for managing teachers in admin panel
+ * Routes for managing teacher data
  * ------------------------------------------------
- * GET    /admin/teachers - List all teachers
- * GET    /admin/teachers/create - Show create teacher form
- * POST   /admin/teachers - Store new teacher
- * GET    /admin/teachers/:id - Show teacher details
- * GET    /admin/teachers/:id/edit - Show edit teacher form
- * PUT    /admin/teachers/:id - Update teacher
+ * GET   /admin/teachers - List all teachers
+ * GET   /admin/teachers/create - Teacher creation form
+ * POST  /admin/teachers - Create new teacher
+ * GET   /admin/teachers/:id - Show teacher details
+ * GET   /admin/teachers/:id/edit - Teacher edit form
+ * PUT   /admin/teachers/:id - Update teacher
  * DELETE /admin/teachers/:id - Delete teacher
  */
 Route.get("/admin/teachers", [Auth, RoleAuth.admin()], TeacherController.index);
@@ -214,12 +215,48 @@ Route.put("/admin/teachers/:id", [Auth, RoleAuth.admin()], TeacherController.upd
 Route.delete("/admin/teachers/:id", [Auth, RoleAuth.admin()], TeacherController.destroy);
 
 /**
- * API Routes for Teachers
+ * Teacher API Routes
  * API endpoints for teacher data
  * ------------------------------------------------
- * GET  /api/teachers - Get teachers data (AJAX)
+ * GET   /api/teachers - Get teachers list (JSON)
  */
 Route.get("/api/teachers", [Auth, RoleAuth.admin()], TeacherController.getTeachersAPI);
+
+/**
+ * Subject Management Routes (Admin Only)
+ * Routes for managing subject data and teacher assignments
+ * ------------------------------------------------
+ * GET   /admin/subjects - List all subjects
+ * GET   /admin/subjects/create - Subject creation form
+ * POST  /admin/subjects - Create new subject
+ * GET   /admin/subjects/:id - Show subject details
+ * GET   /admin/subjects/:id/edit - Subject edit form
+ * PUT   /admin/subjects/:id - Update subject
+ * DELETE /admin/subjects/:id - Delete subject
+ * GET   /admin/subjects/:id/assign - Teacher assignment form
+ * POST  /admin/subjects/:id/assign-teachers - Assign teachers to subject
+ * POST  /admin/subjects/:id/assign-teacher - Assign single teacher
+ * DELETE /admin/subjects/:subject_id/unassign-teacher/:teacher_id - Unassign teacher
+ */
+Route.get("/admin/subjects", [Auth, RoleAuth.admin()], SubjectController.index);
+Route.get("/admin/subjects/create", [Auth, RoleAuth.admin()], SubjectController.create);
+Route.post("/admin/subjects", [Auth, RoleAuth.admin()], SubjectController.store);
+Route.get("/admin/subjects/:id", [Auth, RoleAuth.admin()], SubjectController.show);
+Route.get("/admin/subjects/:id/edit", [Auth, RoleAuth.admin()], SubjectController.edit);
+Route.put("/admin/subjects/:id", [Auth, RoleAuth.admin()], SubjectController.update);
+Route.delete("/admin/subjects/:id", [Auth, RoleAuth.admin()], SubjectController.destroy);
+Route.get("/admin/subjects/:id/assign", [Auth, RoleAuth.admin()], SubjectController.assignTeachers);
+Route.post("/admin/subjects/:id/assign-teachers", [Auth, RoleAuth.admin()], SubjectController.assignTeacher);
+Route.post("/admin/subjects/:id/assign-teacher", [Auth, RoleAuth.admin()], SubjectController.assignTeacher);
+Route.delete("/admin/subjects/:subject_id/unassign-teacher/:teacher_id", [Auth, RoleAuth.admin()], SubjectController.unassignTeacher);
+
+/**
+ * Subject API Routes
+ * API endpoints for subject data
+ * ------------------------------------------------
+ * GET   /api/subjects - Get subjects list (JSON)
+ */
+Route.get("/api/subjects", [Auth, RoleAuth.admin()], SubjectController.getSubjectsAPI);
 
 /**
  * Static Asset Handling Routes
