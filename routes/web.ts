@@ -12,6 +12,7 @@ import HomeController from "../app/controllers/HomeController";
 import AssetController from "../app/controllers/AssetController";
 import HyperExpress from 'hyper-express';
 
+
 const Route = new HyperExpress.Router();
 
 /**
