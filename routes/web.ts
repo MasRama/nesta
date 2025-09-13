@@ -251,6 +251,12 @@ Route.post("/admin/subjects/:id/assign-teachers", [Auth, RoleAuth.admin()], Subj
 Route.post("/admin/subjects/:id/assign-teacher", [Auth, RoleAuth.admin()], SubjectController.assignTeacher);
 Route.delete("/admin/subjects/:subject_id/unassign-teacher/:teacher_id", [Auth, RoleAuth.admin()], SubjectController.unassignTeacher);
 
+// Subject-Class Assignment Routes
+Route.get("/admin/subjects/:id/assign-classes", [Auth, RoleAuth.admin()], SubjectController.assignClasses);
+Route.post("/admin/subjects/:id/assign-class", [Auth, RoleAuth.admin()], SubjectController.assignToClass);
+Route.put("/admin/subjects/assignment/:assignmentId", [Auth, RoleAuth.admin()], SubjectController.updateClassAssignment);
+Route.delete("/admin/subjects/:id/unassign-class", [Auth, RoleAuth.admin()], SubjectController.unassignFromClass);
+
 /**
  * Subject API Routes
  * API endpoints for subject data

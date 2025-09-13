@@ -265,6 +265,106 @@ class SubjectController {
             return response.status(500).json({ error: 'Gagal membatalkan assignment guru' });
         }
     }
+    
+    /**
+     * Show class assignment page
+     */
+    public async assignClasses(request: Request, response: Response) {
+        try {
+            const { id } = request.params;
+            const subject = await SubjectService.getSubjectById(id);
+            
+            if (!subject) {
+                return response.status(404).json({ error: 'Mata pelajaran tidak ditemukan' });
+            }
+            
+            const assignedClasses = await SubjectService.getSubjectClasses(id);
+            const availableClasses = await SubjectService.getAvailableClasses();
+            const availableTeachers = await SubjectService.getAvailableTeachers();
+            
+            return response.inertia("admin/subjects/assign-classes", {
+                subject,
+                assignedClasses,
+                availableClasses,
+                availableTeachers
+            });
+        } catch (error) {
+            console.error('Error loading class assignment page:', error);
+            return response.status(500).json({ error: 'Gagal memuat halaman assignment kelas' });
+        }
+    }
+    
+    /**
+     * Assign subject to class
+     */
+    public async assignToClass(request: Request, response: Response) {
+        try {
+            const { id } = request.params; // subject id
+            const data = await request.json();
+            
+            if (!data.class_id) {
+                return response.status(422).json({ error: 'ID kelas wajib diisi' });
+            }
+            
+            const subject = await SubjectService.getSubjectById(id);
+            if (!subject) {
+                return response.status(404).json({ error: 'Mata pelajaran tidak ditemukan' });
+            }
+            
+            const assignmentData = {
+                subject_id: id,
+                class_id: data.class_id,
+                teacher_id: data.teacher_id,
+                jam_per_minggu: data.jam_per_minggu,
+                notes: data.notes
+            };
+            
+            await SubjectService.assignSubjectToClass(assignmentData);
+            return response.json({ message: 'Mata pelajaran berhasil ditugaskan ke kelas' });
+        } catch (error) {
+            console.error('Error assigning subject to class:', error);
+            if (error instanceof Error && error.message.includes('sudah ditugaskan')) {
+                return response.status(422).json({ error: error.message });
+            }
+            return response.status(500).json({ error: 'Gagal menugaskan mata pelajaran ke kelas' });
+        }
+    }
+    
+    /**
+     * Update subject-class assignment
+     */
+    public async updateClassAssignment(request: Request, response: Response) {
+        try {
+            const { assignmentId } = request.params;
+            const data = await request.json();
+            
+            await SubjectService.updateSubjectClassAssignment(assignmentId, data);
+            return response.json({ message: 'Assignment berhasil diupdate' });
+        } catch (error) {
+            console.error('Error updating class assignment:', error);
+            return response.status(500).json({ error: 'Gagal mengupdate assignment' });
+        }
+    }
+    
+    /**
+     * Unassign subject from class
+     */
+    public async unassignFromClass(request: Request, response: Response) {
+        try {
+            const { id } = request.params; // subject id
+            const { class_id } = await request.json();
+            
+            if (!class_id) {
+                return response.status(422).json({ error: 'ID kelas wajib diisi' });
+            }
+            
+            await SubjectService.unassignSubjectFromClass(id, class_id);
+            return response.json({ message: 'Mata pelajaran berhasil dibatalkan dari kelas' });
+        } catch (error) {
+            console.error('Error unassigning subject from class:', error);
+            return response.status(500).json({ error: 'Gagal membatalkan assignment kelas' });
+        }
+    }
 }
 
 export default new SubjectController();

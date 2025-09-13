@@ -5,7 +5,14 @@ interface SubjectData {
     kode: string;
     nama: string;
     deskripsi?: string;
+}
+
+interface SubjectClassData {
+    subject_id: string;
+    class_id: string;
+    teacher_id?: string;
     jam_per_minggu?: number;
+    notes?: string;
 }
 
 interface ValidationError {
@@ -193,6 +200,133 @@ class SubjectService {
     }
     
     /**
+     * Get all available classes
+     */
+    async getAvailableClasses() {
+        return await DB.from('classes')
+            .select('id', 'name', 'grade_level', 'academic_year')
+            .orderBy('grade_level', 'asc')
+            .orderBy('name', 'asc');
+    }
+    
+    /**
+     * Get classes assigned to a subject
+     */
+    async getSubjectClasses(subjectId: string) {
+        return await DB.from('subject_classes as sc')
+            .join('classes as c', 'sc.class_id', 'c.id')
+            .leftJoin('users as u', 'sc.teacher_id', 'u.id')
+            .select(
+                'c.*',
+                'sc.id as assignment_id',
+                'sc.teacher_id',
+                'sc.jam_per_minggu',
+                'sc.notes',
+                'sc.created_at as assigned_at',
+                'u.name as teacher_name'
+            )
+            .where('sc.subject_id', subjectId)
+            .where('sc.is_active', true)
+            .orderBy('c.grade_level', 'asc')
+            .orderBy('c.name', 'asc');
+    }
+    
+    /**
+     * Get subjects assigned to a class
+     */
+    async getClassSubjects(classId: string) {
+        return await DB.from('subject_classes as sc')
+            .join('subjects as s', 'sc.subject_id', 's.id')
+            .leftJoin('users as u', 'sc.teacher_id', 'u.id')
+            .select(
+                's.*',
+                'sc.id as assignment_id',
+                'sc.teacher_id',
+                'sc.jam_per_minggu',
+                'sc.notes',
+                'sc.created_at as assigned_at',
+                'u.name as teacher_name'
+            )
+            .where('sc.class_id', classId)
+            .where('sc.is_active', true)
+            .where('s.is_active', true)
+            .orderBy('s.nama', 'asc');
+    }
+    
+    /**
+     * Assign subject to class
+     */
+    async assignSubjectToClass(data: SubjectClassData) {
+        const id = randomUUID();
+        const now = Date.now();
+        
+        // Check if assignment already exists
+        const existing = await DB.from('subject_classes')
+            .where('subject_id', data.subject_id)
+            .where('class_id', data.class_id)
+            .first();
+            
+        if (existing) {
+            // Reactivate if exists but inactive
+            if (!existing.is_active) {
+                await DB.from('subject_classes')
+                    .where('id', existing.id)
+                    .update({ 
+                        is_active: true, 
+                        teacher_id: data.teacher_id,
+                        jam_per_minggu: data.jam_per_minggu,
+                        notes: data.notes,
+                        updated_at: now 
+                    });
+                return existing;
+            }
+            throw new Error('Mata pelajaran sudah ditugaskan ke kelas ini');
+        }
+        
+        const assignmentData = {
+            id,
+            subject_id: data.subject_id,
+            class_id: data.class_id,
+            teacher_id: data.teacher_id,
+            jam_per_minggu: data.jam_per_minggu,
+            notes: data.notes,
+            is_active: true,
+            created_at: now,
+            updated_at: now
+        };
+        
+        await DB.from('subject_classes').insert(assignmentData);
+        return assignmentData;
+    }
+    
+    /**
+     * Update subject-class assignment
+     */
+    async updateSubjectClassAssignment(assignmentId: string, data: Partial<SubjectClassData>) {
+        const now = Date.now();
+        
+        await DB.from('subject_classes')
+            .where('id', assignmentId)
+            .update({
+                ...data,
+                updated_at: now
+            });
+            
+        return await DB.from('subject_classes').where('id', assignmentId).first();
+    }
+    
+    /**
+     * Unassign subject from class
+     */
+    async unassignSubjectFromClass(subjectId: string, classId: string) {
+        const now = Date.now();
+        return await DB.from('subject_classes')
+            .where('subject_id', subjectId)
+            .where('class_id', classId)
+            .update({ is_active: false, updated_at: now });
+    }
+    
+    /**
      * Validate subject data
      */
     validateSubjectData(data: any, row: number = 0): ValidationError[] {
@@ -232,18 +366,7 @@ class SubjectService {
             });
         }
         
-        // Validate jam_per_minggu (optional)
-        if (data.jam_per_minggu !== undefined && data.jam_per_minggu !== null) {
-            const jamPerMinggu = parseInt(data.jam_per_minggu);
-            if (isNaN(jamPerMinggu) || jamPerMinggu < 1 || jamPerMinggu > 20) {
-                errors.push({
-                    row,
-                    field: 'jam_per_minggu',
-                    message: 'Jam per minggu harus berupa angka antara 1-20',
-                    value: data.jam_per_minggu
-                });
-            }
-        }
+        // jam_per_minggu validation removed - now handled in subject_classes table
         
         // Validate deskripsi (optional)
         if (data.deskripsi && typeof data.deskripsi === 'string' && data.deskripsi.length > 500) {
