@@ -73,12 +73,12 @@ class SubjectService {
     }
     
     /**
-     * Create new subject
+     * Create new subject with transaction and duplicate prevention
      */
     async createSubject(data: SubjectData) {
         const id = randomUUID();
         const now = Date.now();
-        
+
         const subjectData = {
             id,
             ...data,
@@ -86,9 +86,28 @@ class SubjectService {
             created_at: now,
             updated_at: now
         };
-        
-        await DB.from('subjects').insert(subjectData);
-        return await this.getSubjectById(id);
+
+        // Use transaction to ensure atomicity
+        return await DB.transaction(async (trx) => {
+            // Double-check for existing subject within transaction
+            const existingSubject = await trx.from('subjects')
+                .where('kode', data.kode)
+                .first();
+
+            if (existingSubject) {
+                // If subject already exists, return it (idempotent operation)
+                return existingSubject;
+            }
+
+            // Insert new subject
+            await trx.from('subjects').insert(subjectData);
+
+            // Return the created subject
+            return await trx.from('subjects')
+                .where('id', id)
+                .where('is_active', true)
+                .first();
+        });
     }
     
     /**

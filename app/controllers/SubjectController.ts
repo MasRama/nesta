@@ -43,33 +43,57 @@ class SubjectController {
      * Store new subject
      */
     public async store(request: Request, response: Response) {
+        let data: any;
+        const requestId = Date.now() + '-' + Math.random().toString(36).substring(2, 11);
+
         try {
-            const data = await request.json();
-            
+            data = await request.json();
+            console.log(`[${requestId}] Creating subject with data:`, { kode: data.kode, nama: data.nama });
+
             // Validate data
             const errors = SubjectService.validateSubjectData(data);
             if (errors.length > 0) {
-                return response.status(422).json({ 
-                    error: 'Data tidak valid', 
-                    errors: errors.map(e => `${e.field}: ${e.message}`)
+                console.log(`[${requestId}] Validation failed:`, errors);
+                return response.status(400).json({
+                    error: 'Data tidak valid',
+                    errors
                 });
             }
-            
-            // Check if subject code already exists
-            const existingSubject = await SubjectService.getSubjectByCode(data.kode);
-            if (existingSubject) {
-                return response.status(422).json({ 
-                    error: 'Kode mata pelajaran sudah digunakan' 
-                });
-            }
-            
+
+            console.log(`[${requestId}] Calling SubjectService.createSubject`);
             const subject = await SubjectService.createSubject(data);
-            return response.status(201).json({ 
-                message: 'Mata pelajaran berhasil ditambahkan', 
-                data: subject 
+            console.log(`[${requestId}] Subject created successfully:`, { id: subject.id, kode: subject.kode });
+
+            return response.json({
+                message: 'Mata pelajaran berhasil ditambahkan',
+                subject
             });
-        } catch (error) {
-            console.error('Error creating subject:', error);
+        } catch (error: any) {
+            console.error(`[${requestId}] Error creating subject:`, error);
+
+            // Handle UNIQUE constraint violation
+            if (error.code === 'SQLITE_CONSTRAINT_UNIQUE' || error.message.includes('UNIQUE constraint failed')) {
+                // If we have the data and it's a duplicate, check if subject exists and return success
+                if (data && data.kode) {
+                    try {
+                        const existingSubject = await SubjectService.getSubjectByCode(data.kode);
+                        if (existingSubject) {
+                            // Return success response for idempotent operation
+                            return response.json({
+                                message: 'Mata pelajaran berhasil ditambahkan',
+                                subject: existingSubject
+                            });
+                        }
+                    } catch (checkError) {
+                        console.error('Error checking existing subject:', checkError);
+                    }
+                }
+
+                return response.status(400).json({
+                    error: 'Kode mata pelajaran sudah digunakan'
+                });
+            }
+
             return response.status(500).json({ error: 'Gagal menambahkan mata pelajaran' });
         }
     }
