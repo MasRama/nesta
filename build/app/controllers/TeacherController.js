@@ -56,11 +56,8 @@ class TeacherController {
                     error: 'Email sudah terdaftar'
                 });
             }
-            const teacher = await TeacherService_1.default.createTeacher(data);
-            return response.json({
-                message: 'Guru berhasil ditambahkan',
-                teacher
-            });
+            await TeacherService_1.default.createTeacher(data);
+            return response.redirect("/admin/teachers");
         }
         catch (error) {
             console.error('Error creating teacher:', error);
@@ -130,11 +127,8 @@ class TeacherController {
                     });
                 }
             }
-            const teacher = await TeacherService_1.default.updateTeacher(id, data);
-            return response.json({
-                message: 'Data guru berhasil diperbarui',
-                teacher
-            });
+            await TeacherService_1.default.updateTeacher(id, data);
+            return response.redirect("/admin/teachers");
         }
         catch (error) {
             console.error('Error updating teacher:', error);
@@ -149,7 +143,7 @@ class TeacherController {
                 return response.status(404).json({ error: 'Guru tidak ditemukan' });
             }
             await TeacherService_1.default.deleteTeacher(id);
-            return response.json({ message: 'Guru berhasil dihapus' });
+            return response.redirect("/admin/teachers");
         }
         catch (error) {
             console.error('Error deleting teacher:', error);

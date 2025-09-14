@@ -266,7 +266,7 @@
                <div class="px-4 py-5 sm:p-6">
                   <div class="flex justify-between items-center mb-4">
                      <h3 class="text-lg leading-6 font-medium text-gray-900">Manajemen Siswa</h3>
-                     <button 
+                     <button
                         on:click={() => router.visit('/admin/students')}
                         class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-teal-600 hover:bg-teal-700"
                      >
@@ -275,6 +275,27 @@
                   </div>
                   <div class="text-center py-8">
                      <p class="text-gray-500">Klik tombol di atas untuk mengelola data siswa secara lengkap.</p>
+                  </div>
+               </div>
+            </div>
+         </div>
+
+      {:else if currentSection === 'parents'}
+         <!-- Parents Management Section -->
+         <div class="px-4 py-6 sm:px-0">
+            <div class="bg-white shadow rounded-lg">
+               <div class="px-4 py-5 sm:p-6">
+                  <div class="flex justify-between items-center mb-4">
+                     <h3 class="text-lg leading-6 font-medium text-gray-900">Manajemen Wali Murid</h3>
+                     <button
+                        on:click={() => router.visit('/admin/parents')}
+                        class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-purple-600 hover:bg-purple-700"
+                     >
+                        Kelola Data Wali Murid
+                     </button>
+                  </div>
+                  <div class="text-center py-8">
+                     <p class="text-gray-500">Klik tombol di atas untuk mengelola data wali murid secara lengkap.</p>
                   </div>
                </div>
             </div>

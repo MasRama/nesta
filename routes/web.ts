@@ -5,6 +5,7 @@ import JournalController from "../app/controllers/JournalController";
 import ExamController from "../app/controllers/ExamController";
 import StudentController from "../app/controllers/StudentController";
 import TeacherController from "../app/controllers/TeacherController";
+import ParentController from "../app/controllers/ParentController";
 import SubjectController from "../app/controllers/SubjectController";
 import Auth from "../app/middlewares/auth"
 import RoleAuth from "../app/middlewares/roleAuth";
@@ -222,6 +223,42 @@ Route.delete("/admin/teachers/:id", [Auth, RoleAuth.admin()], TeacherController.
  * GET   /api/teachers - Get teachers list (JSON)
  */
 Route.get("/api/teachers", [Auth, RoleAuth.admin()], TeacherController.getTeachersAPI);
+
+/**
+ * Parent Management Routes (Admin Only)
+ * Routes for managing parent/wali murid data
+ * ------------------------------------------------
+ * GET    /admin/parents - List all parents with pagination and filters
+ * GET    /admin/parents/create - Show create parent form
+ * POST   /admin/parents - Store new parent
+ * GET    /admin/parents/:id - Show parent detail
+ * GET    /admin/parents/:id/edit - Show edit parent form
+ * PUT    /admin/parents/:id - Update parent
+ * DELETE /admin/parents/:id - Delete parent (soft delete)
+ *
+ * Student Management Routes:
+ * POST   /admin/parents/:id/students - Add student to parent
+ * DELETE /admin/parents/:id/students/:studentId - Remove student from parent
+ *
+ * API Routes:
+ * GET    /api/parents - Get parents data (AJAX)
+ * GET    /api/students/search-nipd - Search student by NIPD
+ */
+Route.get("/admin/parents", [Auth, RoleAuth.admin()], ParentController.index);
+Route.get("/admin/parents/create", [Auth, RoleAuth.admin()], ParentController.create);
+Route.post("/admin/parents", [Auth, RoleAuth.admin()], ParentController.store);
+Route.get("/admin/parents/:id", [Auth, RoleAuth.admin()], ParentController.show);
+Route.get("/admin/parents/:id/edit", [Auth, RoleAuth.admin()], ParentController.edit);
+Route.put("/admin/parents/:id", [Auth, RoleAuth.admin()], ParentController.update);
+Route.delete("/admin/parents/:id", [Auth, RoleAuth.admin()], ParentController.destroy);
+
+// Student Management Routes
+Route.post("/admin/parents/:id/students", [Auth, RoleAuth.admin()], ParentController.addStudent);
+Route.delete("/admin/parents/:id/students/:studentId", [Auth, RoleAuth.admin()], ParentController.removeStudent);
+
+// API Routes
+Route.get("/api/parents", [Auth, RoleAuth.admin()], ParentController.getParentsAPI);
+Route.get("/api/students/search-nipd", [Auth, RoleAuth.admin()], ParentController.searchStudentByNipd);
 
 /**
  * Subject Management Routes (Admin Only)
