@@ -71,11 +71,8 @@ class TeacherController {
                 });
             }
             
-            const teacher = await TeacherService.createTeacher(data);
-            return response.json({ 
-                message: 'Guru berhasil ditambahkan', 
-                teacher 
-            });
+            await TeacherService.createTeacher(data);
+            return response.redirect("/admin/teachers");
         } catch (error) {
             console.error('Error creating teacher:', error);
             return response.status(500).json({ error: 'Gagal menambahkan guru' });
@@ -168,11 +165,8 @@ class TeacherController {
                 }
             }
             
-            const teacher = await TeacherService.updateTeacher(id, data);
-            return response.json({ 
-                message: 'Data guru berhasil diperbarui', 
-                teacher 
-            });
+            await TeacherService.updateTeacher(id, data);
+            return response.redirect("/admin/teachers");
         } catch (error) {
             console.error('Error updating teacher:', error);
             return response.status(500).json({ error: 'Gagal memperbarui data guru' });
@@ -192,7 +186,7 @@ class TeacherController {
             }
             
             await TeacherService.deleteTeacher(id);
-            return response.json({ message: 'Guru berhasil dihapus' });
+            return response.redirect("/admin/teachers");
         } catch (error) {
             console.error('Error deleting teacher:', error);
             return response.status(500).json({ error: 'Gagal menghapus guru' });
