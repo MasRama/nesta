@@ -247,7 +247,9 @@ Route.get("/admin/subjects/:id/edit", [Auth, RoleAuth.admin()], SubjectControlle
 Route.put("/admin/subjects/:id", [Auth, RoleAuth.admin()], SubjectController.update);
 Route.delete("/admin/subjects/:id", [Auth, RoleAuth.admin()], SubjectController.destroy);
 Route.get("/admin/subjects/:id/assign", [Auth, RoleAuth.admin()], SubjectController.assignTeachers);
+Route.get("/admin/subjects/:id/teachers-modal", [Auth, RoleAuth.admin()], SubjectController.getTeachersModal);
 Route.post("/admin/subjects/:id/assign-teachers", [Auth, RoleAuth.admin()], SubjectController.assignTeacher);
+Route.post("/admin/subjects/:id/batch-assign-teachers", [Auth, RoleAuth.admin()], SubjectController.batchAssignTeachers);
 Route.post("/admin/subjects/:id/assign-teacher", [Auth, RoleAuth.admin()], SubjectController.assignTeacher);
 Route.delete("/admin/subjects/:subject_id/unassign-teacher/:teacher_id", [Auth, RoleAuth.admin()], SubjectController.unassignTeacher);
 

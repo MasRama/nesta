@@ -217,6 +217,33 @@ class SubjectService {
             .where('is_active', true)
             .orderBy('nama', 'asc');
     }
+
+    /**
+     * Get teachers data for modal with assignment status
+     */
+    async getTeachersForModal(subjectId: string) {
+        // Get all active teachers
+        const allTeachers = await DB.from('teachers')
+            .select('id', 'nama', 'nip', 'email')
+            .where('is_active', true)
+            .orderBy('nama', 'asc');
+
+        // Get assigned teachers for this subject
+        const assignedTeachers = await DB.from('teacher_subjects')
+            .select('teacher_id')
+            .where('subject_id', subjectId)
+            .where('is_active', true);
+
+        const assignedTeacherIds = new Set(assignedTeachers.map(t => t.teacher_id));
+
+        // Mark teachers as assigned or available
+        const teachersWithStatus = allTeachers.map(teacher => ({
+            ...teacher,
+            isAssigned: assignedTeacherIds.has(teacher.id)
+        }));
+
+        return teachersWithStatus;
+    }
     
     /**
      * Get all available classes

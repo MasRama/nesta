@@ -14,6 +14,14 @@
    let isLoading = false;
    let searchQuery = filters.search || '';
    let currentSection = 'subjects';
+
+   // Modal state
+   let showTeachersModal = false;
+   let modalSubject = null;
+   let modalTeachers = [];
+   let selectedTeachers = new Set();
+   let isModalLoading = false;
+   let modalSearchTerm = '';
    
    function handleSearch() {
       const params = new URLSearchParams();
@@ -43,13 +51,93 @@
       router.visit(`/admin/subjects/${id}`);
    }
    
-   function assignTeachers(id) {
-      router.visit(`/admin/subjects/${id}/assign-teachers`);
+   async function assignTeachers(id) {
+      try {
+         isModalLoading = true;
+         showTeachersModal = true;
+
+         const response = await fetch(`/admin/subjects/${id}/teachers-modal`);
+         const data = await response.json();
+
+         if (response.ok) {
+            modalSubject = data.subject;
+            modalTeachers = data.teachers;
+            selectedTeachers = new Set(data.teachers.filter(t => t.isAssigned).map(t => t.id));
+         } else {
+            alert(data.error || 'Gagal mengambil data guru');
+            showTeachersModal = false;
+         }
+      } catch (error) {
+         console.error('Error loading teachers:', error);
+         alert('Gagal mengambil data guru');
+         showTeachersModal = false;
+      } finally {
+         isModalLoading = false;
+      }
    }
    
    function assignClasses(id) {
       router.visit(`/admin/subjects/${id}/assign-classes`);
    }
+
+   // Modal functions
+   function closeModal() {
+      showTeachersModal = false;
+      modalSubject = null;
+      modalTeachers = [];
+      selectedTeachers = new Set();
+      modalSearchTerm = '';
+   }
+
+   function toggleTeacher(teacherId) {
+      if (selectedTeachers.has(teacherId)) {
+         selectedTeachers.delete(teacherId);
+      } else {
+         selectedTeachers.add(teacherId);
+      }
+      selectedTeachers = selectedTeachers; // Trigger reactivity
+   }
+
+   async function saveAssignments() {
+      if (!modalSubject || isModalLoading) return;
+
+      try {
+         isModalLoading = true;
+
+         const response = await fetch(`/admin/subjects/${modalSubject.id}/batch-assign-teachers`, {
+            method: 'POST',
+            headers: {
+               'Content-Type': 'application/json',
+               'X-Inertia': 'true'
+            },
+            body: JSON.stringify({
+               teacher_ids: Array.from(selectedTeachers)
+            })
+         });
+
+         const result = await response.json();
+
+         if (response.ok) {
+            alert(`Assignment berhasil diperbarui! ${result.assigned} guru ditugaskan, ${result.unassigned} guru dibatalkan.`);
+            closeModal();
+            // Refresh page to show updated data
+            router.reload();
+         } else {
+            alert(result.error || 'Terjadi kesalahan saat menyimpan assignment');
+         }
+      } catch (error) {
+         console.error('Error saving assignments:', error);
+         alert('Terjadi kesalahan saat menyimpan assignment');
+      } finally {
+         isModalLoading = false;
+      }
+   }
+
+   // Filtered teachers for search
+   $: filteredTeachers = modalTeachers.filter(teacher =>
+      teacher.nama.toLowerCase().includes(modalSearchTerm.toLowerCase()) ||
+      teacher.nip.toLowerCase().includes(modalSearchTerm.toLowerCase())
+   );
    
    function deleteSubject(id, name) {
       if (confirm(`Apakah Anda yakin ingin menghapus mata pelajaran "${name}"?`)) {
@@ -328,6 +416,141 @@
       </div>
    </main>
 </div>
+
+<!-- Teachers Assignment Modal -->
+{#if showTeachersModal}
+   <div class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 flex items-center justify-center p-4">
+      <div class="relative bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-hidden">
+         <!-- Modal Header -->
+         <div class="bg-gradient-to-r from-green-600 to-emerald-600 px-6 py-4">
+            <div class="flex items-center justify-between">
+               <div>
+                  <h3 class="text-lg font-semibold text-white">Kelola Guru Pengampu</h3>
+                  {#if modalSubject}
+                     <p class="text-green-100 text-sm mt-1">{modalSubject.nama} ({modalSubject.kode})</p>
+                  {/if}
+               </div>
+               <button
+                  on:click={closeModal}
+                  class="text-white hover:text-green-200 transition-colors"
+                  disabled={isModalLoading}
+               >
+                  <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                  </svg>
+               </button>
+            </div>
+         </div>
+
+         <!-- Modal Body -->
+         <div class="p-6 overflow-y-auto max-h-[calc(90vh-200px)]">
+            {#if isModalLoading}
+               <div class="flex items-center justify-center py-12">
+                  <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-green-600"></div>
+                  <span class="ml-3 text-gray-600">Memuat data guru...</span>
+               </div>
+            {:else}
+               <!-- Search Bar -->
+               <div class="mb-6">
+                  <div class="relative">
+                     <input
+                        type="text"
+                        bind:value={modalSearchTerm}
+                        placeholder="Cari guru berdasarkan nama atau NIP..."
+                        class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                     />
+                     <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <svg class="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                        </svg>
+                     </div>
+                  </div>
+               </div>
+
+               <!-- Teachers List -->
+               {#if filteredTeachers.length === 0}
+                  <div class="text-center py-8 text-gray-500">
+                     <svg class="mx-auto h-12 w-12 text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z"/>
+                     </svg>
+                     <p>Tidak ada guru yang ditemukan</p>
+                  </div>
+               {:else}
+                  <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                     {#each filteredTeachers as teacher}
+                        <div
+                           class="border rounded-lg p-4 cursor-pointer transition-all duration-200 hover:shadow-md"
+                           class:bg-green-50={selectedTeachers.has(teacher.id)}
+                           class:border-green-300={selectedTeachers.has(teacher.id)}
+                           class:bg-white={!selectedTeachers.has(teacher.id)}
+                           class:border-gray-200={!selectedTeachers.has(teacher.id)}
+                           on:click={() => toggleTeacher(teacher.id)}
+                           on:keydown={(e) => e.key === 'Enter' && toggleTeacher(teacher.id)}
+                           role="button"
+                           tabindex="0"
+                        >
+                           <div class="flex items-start justify-between">
+                              <div class="flex-1">
+                                 <h4 class="font-medium text-gray-900 mb-1">{teacher.nama}</h4>
+                                 <p class="text-sm text-gray-600 mb-2">NIP: {teacher.nip}</p>
+                                 <p class="text-xs text-gray-500">{teacher.email}</p>
+                                 {#if teacher.isAssigned}
+                                    <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 mt-2">
+                                       Sudah Ditugaskan
+                                    </span>
+                                 {/if}
+                              </div>
+                              <div class="ml-3">
+                                 {#if selectedTeachers.has(teacher.id)}
+                                    <div class="w-6 h-6 bg-green-500 rounded-full flex items-center justify-center">
+                                       <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                                       </svg>
+                                    </div>
+                                 {:else}
+                                    <div class="w-6 h-6 border-2 border-gray-300 rounded-full"></div>
+                                 {/if}
+                              </div>
+                           </div>
+                        </div>
+                     {/each}
+                  </div>
+               {/if}
+            {/if}
+         </div>
+
+         <!-- Modal Footer -->
+         <div class="bg-gray-50 px-6 py-4 flex items-center justify-between">
+            <div class="text-sm text-gray-600">
+               {selectedTeachers.size} guru dipilih dari {modalTeachers.length} guru tersedia
+            </div>
+            <div class="flex space-x-3">
+               <button
+                  on:click={closeModal}
+                  class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
+                  disabled={isModalLoading}
+               >
+                  Batal
+               </button>
+               <button
+                  on:click={saveAssignments}
+                  class="px-4 py-2 text-sm font-medium text-white bg-green-600 border border-transparent rounded-md hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  disabled={isModalLoading}
+               >
+                  {#if isModalLoading}
+                     <div class="flex items-center">
+                        <div class="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                        Menyimpan...
+                     </div>
+                  {:else}
+                     Simpan Assignment
+                  {/if}
+               </button>
+            </div>
+         </div>
+      </div>
+   </div>
+{/if}
 
 <style>
    /* Global Transitions */

@@ -280,7 +280,90 @@ class SubjectController {
             return response.status(500).json({ error: 'Gagal membatalkan assignment guru' });
         }
     }
-    
+
+    /**
+     * Get teachers data for modal
+     */
+    public async getTeachersModal(request: Request, response: Response) {
+        try {
+            const { id } = request.params;
+            const subject = await SubjectService.getSubjectById(id);
+
+            if (!subject) {
+                return response.status(404).json({ error: 'Mata pelajaran tidak ditemukan' });
+            }
+
+            const teachers = await SubjectService.getTeachersForModal(id);
+
+            return response.json({
+                subject,
+                teachers
+            });
+        } catch (error) {
+            console.error('Error fetching teachers for modal:', error);
+            return response.status(500).json({ error: 'Gagal mengambil data guru' });
+        }
+    }
+
+    /**
+     * Batch assign/unassign teachers to subject
+     */
+    public async batchAssignTeachers(request: Request, response: Response) {
+        try {
+            const { id } = request.params; // subject id
+            const { teacher_ids } = await request.json();
+
+            if (!Array.isArray(teacher_ids)) {
+                return response.status(422).json({ error: 'teacher_ids harus berupa array' });
+            }
+
+            const subject = await SubjectService.getSubjectById(id);
+            if (!subject) {
+                return response.status(404).json({ error: 'Mata pelajaran tidak ditemukan' });
+            }
+
+            // Get currently assigned teachers
+            const currentAssignments = await SubjectService.getSubjectTeachers(id);
+            const currentTeacherIds = new Set(currentAssignments.map(t => t.id));
+            const newTeacherIds = new Set(teacher_ids);
+
+            // Teachers to assign (in new list but not in current)
+            const toAssign = teacher_ids.filter(id => !currentTeacherIds.has(id));
+
+            // Teachers to unassign (in current but not in new list)
+            const toUnassign = currentAssignments
+                .filter(t => !newTeacherIds.has(t.id))
+                .map(t => t.id);
+
+            // Perform assignments
+            for (const teacherId of toAssign) {
+                try {
+                    await SubjectService.assignTeacherToSubject(teacherId, id);
+                } catch (error) {
+                    console.warn(`Failed to assign teacher ${teacherId}:`, error);
+                }
+            }
+
+            // Perform unassignments
+            for (const teacherId of toUnassign) {
+                try {
+                    await SubjectService.unassignTeacherFromSubject(teacherId, id);
+                } catch (error) {
+                    console.warn(`Failed to unassign teacher ${teacherId}:`, error);
+                }
+            }
+
+            return response.json({
+                message: 'Assignment guru berhasil diperbarui',
+                assigned: toAssign.length,
+                unassigned: toUnassign.length
+            });
+        } catch (error) {
+            console.error('Error batch assigning teachers:', error);
+            return response.status(500).json({ error: 'Gagal memperbarui assignment guru' });
+        }
+    }
+
     /**
      * Show class assignment page
      */
