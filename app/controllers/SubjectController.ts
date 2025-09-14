@@ -463,6 +463,90 @@ class SubjectController {
             return response.status(500).json({ error: 'Gagal membatalkan assignment kelas' });
         }
     }
+
+    /**
+     * Get unique classes from students for dropdown
+     */
+    public async getUniqueClasses(request: Request, response: Response) {
+        try {
+            const classes = await SubjectService.getUniqueClassesFromStudents();
+            return response.json({ classes });
+        } catch (error) {
+            console.error('Error fetching unique classes:', error);
+            return response.status(500).json({ error: 'Gagal mengambil data kelas' });
+        }
+    }
+
+    /**
+     * Create subject schedule
+     */
+    public async createSchedule(request: Request, response: Response) {
+        try {
+            const { id } = request.params; // subject id
+            const data = await request.json();
+
+            const subject = await SubjectService.getSubjectById(id);
+            if (!subject) {
+                return response.status(404).json({ error: 'Mata pelajaran tidak ditemukan' });
+            }
+
+            const scheduleData = {
+                subject_id: id,
+                kelas: data.kelas,
+                start_time: data.start_time,
+                end_time: data.end_time,
+                day: data.day,
+                notes: data.notes
+            };
+
+            const schedule = await SubjectService.createSubjectSchedule(scheduleData);
+            return response.json({
+                message: 'Jadwal berhasil dibuat',
+                schedule
+            });
+        } catch (error) {
+            console.error('Error creating subject schedule:', error);
+            if (error instanceof Error) {
+                return response.status(422).json({ error: error.message });
+            }
+            return response.status(500).json({ error: 'Gagal membuat jadwal' });
+        }
+    }
+
+    /**
+     * Get subject schedules
+     */
+    public async getSchedules(request: Request, response: Response) {
+        try {
+            const { id } = request.params; // subject id
+
+            const subject = await SubjectService.getSubjectById(id);
+            if (!subject) {
+                return response.status(404).json({ error: 'Mata pelajaran tidak ditemukan' });
+            }
+
+            const schedules = await SubjectService.getSubjectSchedules(id);
+            return response.json({ schedules });
+        } catch (error) {
+            console.error('Error fetching subject schedules:', error);
+            return response.status(500).json({ error: 'Gagal mengambil jadwal' });
+        }
+    }
+
+    /**
+     * Delete subject schedule
+     */
+    public async deleteSchedule(request: Request, response: Response) {
+        try {
+            const { scheduleId } = request.params;
+
+            await SubjectService.deleteSubjectSchedule(scheduleId);
+            return response.json({ message: 'Jadwal berhasil dihapus' });
+        } catch (error) {
+            console.error('Error deleting subject schedule:', error);
+            return response.status(500).json({ error: 'Gagal menghapus jadwal' });
+        }
+    }
 }
 
 export default new SubjectController();

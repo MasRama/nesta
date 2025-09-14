@@ -22,6 +22,21 @@
    let selectedTeachers = new Set();
    let isModalLoading = false;
    let modalSearchTerm = '';
+
+   // Schedule modal state
+   let showScheduleModal = false;
+   let scheduleSubject = null;
+   let availableClasses = [];
+   let existingSchedules = [];
+   let isScheduleLoading = false;
+
+   // Schedule form data
+   let selectedKelas = '';
+   let startTime = '';
+   let endTime = '';
+   let selectedDay = '';
+   let scheduleNotes = '';
+   let scheduleErrors = {};
    
    function handleSearch() {
       const params = new URLSearchParams();
@@ -76,8 +91,44 @@
       }
    }
    
-   function assignClasses(id) {
-      router.visit(`/admin/subjects/${id}/assign-classes`);
+   async function assignClasses(id) {
+      try {
+         isScheduleLoading = true;
+         showScheduleModal = true;
+
+         // Get subject data
+         const subject = subjects.find(s => s.id === id);
+         scheduleSubject = subject;
+
+         // Get unique classes from students
+         const classesResponse = await fetch('/api/subjects/unique-classes');
+         const classesData = await classesResponse.json();
+
+         if (classesResponse.ok) {
+            availableClasses = classesData.classes;
+         } else {
+            alert('Gagal mengambil data kelas');
+            showScheduleModal = false;
+            return;
+         }
+
+         // Get existing schedules
+         const schedulesResponse = await fetch(`/admin/subjects/${id}/schedules`);
+         const schedulesData = await schedulesResponse.json();
+
+         if (schedulesResponse.ok) {
+            existingSchedules = schedulesData.schedules;
+         } else {
+            existingSchedules = [];
+         }
+
+      } catch (error) {
+         console.error('Error loading schedule data:', error);
+         alert('Gagal memuat data jadwal');
+         showScheduleModal = false;
+      } finally {
+         isScheduleLoading = false;
+      }
    }
 
    // Modal functions
@@ -138,6 +189,109 @@
       teacher.nama.toLowerCase().includes(modalSearchTerm.toLowerCase()) ||
       teacher.nip.toLowerCase().includes(modalSearchTerm.toLowerCase())
    );
+
+   // Schedule modal functions
+   function closeScheduleModal() {
+      showScheduleModal = false;
+      scheduleSubject = null;
+      availableClasses = [];
+      existingSchedules = [];
+      selectedKelas = '';
+      startTime = '';
+      endTime = '';
+      selectedDay = '';
+      scheduleNotes = '';
+      scheduleErrors = {};
+   }
+
+   async function handleCreateSchedule() {
+      if (isScheduleLoading) return;
+
+      isScheduleLoading = true;
+      scheduleErrors = {};
+
+      try {
+         const response = await fetch(`/admin/subjects/${scheduleSubject.id}/schedule`, {
+            method: 'POST',
+            headers: {
+               'Content-Type': 'application/json',
+               'X-Inertia': 'true'
+            },
+            body: JSON.stringify({
+               kelas: selectedKelas,
+               start_time: startTime,
+               end_time: endTime,
+               day: selectedDay,
+               notes: scheduleNotes
+            })
+         });
+
+         const result = await response.json();
+
+         if (response.ok) {
+            // Reset form
+            selectedKelas = '';
+            startTime = '';
+            endTime = '';
+            selectedDay = '';
+            scheduleNotes = '';
+
+            // Refresh schedules
+            const schedulesResponse = await fetch(`/admin/subjects/${scheduleSubject.id}/schedules`);
+            const schedulesData = await schedulesResponse.json();
+
+            if (schedulesResponse.ok) {
+               existingSchedules = schedulesData.schedules;
+            }
+
+            alert('Jadwal berhasil dibuat');
+         } else {
+            if (result.error) {
+               alert(result.error);
+            } else {
+               alert('Terjadi kesalahan');
+            }
+         }
+      } catch (error) {
+         console.error('Error creating schedule:', error);
+         alert('Gagal membuat jadwal');
+      } finally {
+         isScheduleLoading = false;
+      }
+   }
+
+   async function deleteSchedule(scheduleId) {
+      if (!confirm('Apakah Anda yakin ingin menghapus jadwal ini?')) return;
+
+      try {
+         const response = await fetch(`/admin/subjects/schedule/${scheduleId}`, {
+            method: 'DELETE',
+            headers: {
+               'Content-Type': 'application/json',
+               'X-Inertia': 'true'
+            }
+         });
+
+         const result = await response.json();
+
+         if (response.ok) {
+            // Refresh schedules
+            const schedulesResponse = await fetch(`/admin/subjects/${scheduleSubject.id}/schedules`);
+            const schedulesData = await schedulesResponse.json();
+
+            if (schedulesResponse.ok) {
+               existingSchedules = schedulesData.schedules;
+            }
+
+            alert('Jadwal berhasil dihapus');
+         } else {
+            alert(result.error || 'Gagal menghapus jadwal');
+         }
+      } catch (error) {
+         console.error('Error deleting schedule:', error);
+         alert('Gagal menghapus jadwal');
+      }
+   }
    
    function deleteSubject(id, name) {
       if (confirm(`Apakah Anda yakin ingin menghapus mata pelajaran "${name}"?`)) {
@@ -547,6 +701,196 @@
                   {/if}
                </button>
             </div>
+         </div>
+      </div>
+   </div>
+{/if}
+
+<!-- Schedule Modal -->
+{#if showScheduleModal}
+   <div class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 flex items-center justify-center p-4">
+      <div class="relative bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-hidden">
+         <!-- Modal Header -->
+         <div class="bg-gradient-to-r from-orange-600 to-red-600 px-6 py-4">
+            <div class="flex items-center justify-between">
+               <div>
+                  <h3 class="text-xl font-bold text-white">Kelola Jadwal Kelas</h3>
+                  {#if scheduleSubject}
+                     <p class="text-orange-100 text-sm mt-1">{scheduleSubject.nama} ({scheduleSubject.kode})</p>
+                  {/if}
+               </div>
+               <button
+                  on:click={closeScheduleModal}
+                  class="text-white hover:text-orange-200 transition-colors"
+                  disabled={isScheduleLoading}
+               >
+                  <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                  </svg>
+               </button>
+            </div>
+         </div>
+
+         <!-- Modal Body -->
+         <div class="p-6 max-h-[calc(90vh-120px)] overflow-y-auto">
+            {#if isScheduleLoading}
+               <div class="flex items-center justify-center py-8">
+                  <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-600"></div>
+                  <span class="ml-3 text-gray-600">Memuat data...</span>
+               </div>
+            {:else}
+               <!-- Schedule Form -->
+               <div class="bg-gray-50 rounded-lg p-6 mb-6">
+                  <h4 class="text-lg font-semibold text-gray-800 mb-4">Tambah Jadwal Baru</h4>
+
+                  <form on:submit|preventDefault={handleCreateSchedule} class="space-y-4">
+                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <!-- Dropdown Kelas -->
+                        <div>
+                           <label for="kelas" class="block text-sm font-medium text-gray-700 mb-2">
+                              Kelas <span class="text-red-500">*</span>
+                           </label>
+                           <select
+                              id="kelas"
+                              bind:value={selectedKelas}
+                              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                              required
+                           >
+                              <option value="">Pilih Kelas</option>
+                              {#each availableClasses as kelas}
+                                 <option value={kelas}>{kelas}</option>
+                              {/each}
+                           </select>
+                        </div>
+
+                        <!-- Day Picker -->
+                        <div>
+                           <label for="day" class="block text-sm font-medium text-gray-700 mb-2">
+                              Hari <span class="text-red-500">*</span>
+                           </label>
+                           <select
+                              id="day"
+                              bind:value={selectedDay}
+                              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                              required
+                           >
+                              <option value="">Pilih Hari</option>
+                              <option value="Senin">Senin</option>
+                              <option value="Selasa">Selasa</option>
+                              <option value="Rabu">Rabu</option>
+                              <option value="Kamis">Kamis</option>
+                              <option value="Jumat">Jumat</option>
+                           </select>
+                        </div>
+
+                        <!-- Start Time -->
+                        <div>
+                           <label for="start_time" class="block text-sm font-medium text-gray-700 mb-2">
+                              Jam Mulai <span class="text-red-500">*</span>
+                           </label>
+                           <input
+                              type="time"
+                              id="start_time"
+                              bind:value={startTime}
+                              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                              required
+                           />
+                        </div>
+
+                        <!-- End Time -->
+                        <div>
+                           <label for="end_time" class="block text-sm font-medium text-gray-700 mb-2">
+                              Jam Selesai <span class="text-red-500">*</span>
+                           </label>
+                           <input
+                              type="time"
+                              id="end_time"
+                              bind:value={endTime}
+                              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                              required
+                           />
+                        </div>
+                     </div>
+
+                     <!-- Notes -->
+                     <div>
+                        <label for="notes" class="block text-sm font-medium text-gray-700 mb-2">
+                           Catatan (Opsional)
+                        </label>
+                        <textarea
+                           id="notes"
+                           bind:value={scheduleNotes}
+                           rows="3"
+                           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                           placeholder="Catatan tambahan untuk jadwal ini..."
+                        ></textarea>
+                     </div>
+
+                     <!-- Submit Button -->
+                     <div class="flex justify-end">
+                        <button
+                           type="submit"
+                           disabled={isScheduleLoading}
+                           class="px-6 py-2 bg-orange-600 text-white rounded-md hover:bg-orange-700 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                        >
+                           {#if isScheduleLoading}
+                              <div class="flex items-center">
+                                 <div class="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                                 Menyimpan...
+                              </div>
+                           {:else}
+                              Simpan Jadwal
+                           {/if}
+                        </button>
+                     </div>
+                  </form>
+               </div>
+
+               <!-- Existing Schedules -->
+               <div>
+                  <h4 class="text-lg font-semibold text-gray-800 mb-4">Jadwal yang Sudah Ada</h4>
+
+                  {#if existingSchedules.length === 0}
+                     <div class="bg-yellow-50 border border-yellow-200 rounded-md p-4">
+                        <div class="flex items-center">
+                           <svg class="w-5 h-5 text-yellow-400 mr-3" fill="currentColor" viewBox="0 0 20 20">
+                              <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
+                           </svg>
+                           <p class="text-yellow-800">Belum ada jadwal untuk mata pelajaran ini.</p>
+                        </div>
+                     </div>
+                  {:else}
+                     <div class="space-y-3">
+                        {#each existingSchedules as schedule}
+                           <div class="bg-white border border-gray-200 rounded-lg p-4 flex items-center justify-between">
+                              <div>
+                                 <div class="flex items-center space-x-4">
+                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                                       {schedule.kelas}
+                                    </span>
+                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                       {schedule.day}
+                                    </span>
+                                    <span class="text-sm text-gray-600">
+                                       {schedule.start_time} - {schedule.end_time}
+                                    </span>
+                                 </div>
+                                 {#if schedule.notes}
+                                    <p class="text-sm text-gray-500 mt-2">{schedule.notes}</p>
+                                 {/if}
+                              </div>
+                              <button
+                                 on:click={() => deleteSchedule(schedule.id)}
+                                 class="ml-4 px-3 py-1 text-sm text-red-600 hover:text-red-800 hover:bg-red-50 rounded transition-colors"
+                              >
+                                 Hapus
+                              </button>
+                           </div>
+                        {/each}
+                     </div>
+                  {/if}
+               </div>
+            {/if}
          </div>
       </div>
    </div>

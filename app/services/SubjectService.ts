@@ -426,6 +426,194 @@ class SubjectService {
         
         return errors;
     }
+
+    /**
+     * Get unique classes from students table
+     */
+    async getUniqueClassesFromStudents() {
+        const classes = await DB.from('students')
+            .distinct('kelas')
+            .where('is_active', true)
+            .whereNotNull('kelas')
+            .where('kelas', '!=', '')
+            .orderBy('kelas');
+        return classes.map(c => c.kelas);
+    }
+
+    /**
+     * Create subject schedule
+     */
+    async createSubjectSchedule(data: {
+        subject_id: string;
+        kelas: string;
+        start_time: string;
+        end_time: string;
+        day: string;
+        notes?: string;
+    }) {
+        const id = randomUUID();
+        const now = Date.now();
+
+        // Validate schedule data
+        const validationErrors = this.validateScheduleData(data);
+        if (validationErrors.length > 0) {
+            throw new Error(validationErrors.map(e => e.message).join(', '));
+        }
+
+        // Check for schedule conflicts
+        const conflicts = await this.checkScheduleConflicts(data);
+        if (conflicts.length > 0) {
+            throw new Error('Jadwal bertabrakan dengan jadwal yang sudah ada');
+        }
+
+        const scheduleData = {
+            id,
+            subject_id: data.subject_id,
+            kelas: data.kelas,
+            start_time: data.start_time,
+            end_time: data.end_time,
+            day: data.day,
+            notes: data.notes || null,
+            is_active: true,
+            created_at: now,
+            updated_at: now
+        };
+
+        await DB.from('subject_schedules').insert(scheduleData);
+        return scheduleData;
+    }
+
+    /**
+     * Get subject schedules
+     */
+    async getSubjectSchedules(subjectId: string) {
+        return await DB.from('subject_schedules')
+            .where('subject_id', subjectId)
+            .where('is_active', true)
+            .orderBy('day')
+            .orderBy('start_time');
+    }
+
+    /**
+     * Validate schedule data
+     */
+    validateScheduleData(data: any): ValidationError[] {
+        const errors: ValidationError[] = [];
+
+        // Validate subject_id
+        if (!data.subject_id) {
+            errors.push({
+                row: 0,
+                field: 'subject_id',
+                message: 'ID mata pelajaran wajib diisi',
+                value: data.subject_id
+            });
+        }
+
+        // Validate kelas
+        if (!data.kelas || typeof data.kelas !== 'string' || data.kelas.trim().length === 0) {
+            errors.push({
+                row: 0,
+                field: 'kelas',
+                message: 'Kelas wajib dipilih',
+                value: data.kelas
+            });
+        }
+
+        // Validate start_time
+        if (!data.start_time || !this.isValidTimeFormat(data.start_time)) {
+            errors.push({
+                row: 0,
+                field: 'start_time',
+                message: 'Jam mulai wajib diisi dengan format HH:MM',
+                value: data.start_time
+            });
+        }
+
+        // Validate end_time
+        if (!data.end_time || !this.isValidTimeFormat(data.end_time)) {
+            errors.push({
+                row: 0,
+                field: 'end_time',
+                message: 'Jam selesai wajib diisi dengan format HH:MM',
+                value: data.end_time
+            });
+        }
+
+        // Validate time range
+        if (data.start_time && data.end_time && this.isValidTimeFormat(data.start_time) && this.isValidTimeFormat(data.end_time)) {
+            if (data.start_time >= data.end_time) {
+                errors.push({
+                    row: 0,
+                    field: 'end_time',
+                    message: 'Jam selesai harus lebih besar dari jam mulai',
+                    value: data.end_time
+                });
+            }
+        }
+
+        // Validate day
+        const validDays = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat'];
+        if (!data.day || !validDays.includes(data.day)) {
+            errors.push({
+                row: 0,
+                field: 'day',
+                message: 'Hari wajib dipilih dari: ' + validDays.join(', '),
+                value: data.day
+            });
+        }
+
+        return errors;
+    }
+
+    /**
+     * Check for schedule conflicts
+     */
+    async checkScheduleConflicts(data: {
+        subject_id: string;
+        kelas: string;
+        start_time: string;
+        end_time: string;
+        day: string;
+    }) {
+        return await DB.from('subject_schedules')
+            .where('kelas', data.kelas)
+            .where('day', data.day)
+            .where('is_active', true)
+            .where(function() {
+                this.where(function() {
+                    // New schedule starts during existing schedule
+                    this.where('start_time', '<=', data.start_time)
+                        .where('end_time', '>', data.start_time);
+                }).orWhere(function() {
+                    // New schedule ends during existing schedule
+                    this.where('start_time', '<', data.end_time)
+                        .where('end_time', '>=', data.end_time);
+                }).orWhere(function() {
+                    // New schedule completely contains existing schedule
+                    this.where('start_time', '>=', data.start_time)
+                        .where('end_time', '<=', data.end_time);
+                });
+            });
+    }
+
+    /**
+     * Validate time format (HH:MM)
+     */
+    private isValidTimeFormat(time: string): boolean {
+        const timeRegex = /^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/;
+        return timeRegex.test(time);
+    }
+
+    /**
+     * Delete subject schedule
+     */
+    async deleteSubjectSchedule(scheduleId: string) {
+        const now = Date.now();
+        return await DB.from('subject_schedules')
+            .where('id', scheduleId)
+            .update({ is_active: false, updated_at: now });
+    }
 }
 
 export default new SubjectService();
