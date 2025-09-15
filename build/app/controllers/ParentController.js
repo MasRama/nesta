@@ -36,58 +36,47 @@ class ParentController {
         }
     }
     async store(request, response) {
+        const requestId = Math.random().toString(36).substring(7);
         let data;
-        const requestId = Date.now() + '-' + Math.random().toString(36).substring(2, 11);
         try {
             data = await request.json();
             console.log(`[${requestId}] Creating parent with data:`, { nama: data.nama, email: data.email });
             const errors = ParentService_1.default.validateParentData(data);
             if (errors.length > 0) {
                 console.log(`[${requestId}] Validation failed:`, errors);
-                return response.status(422).json({
+                return response.status(400).json({
                     error: 'Data tidak valid',
                     errors
                 });
             }
+            const existingParent = await ParentService_1.default.getParentByEmail(data.email);
+            if (existingParent) {
+                return response.status(400).json({
+                    error: 'Email sudah digunakan',
+                    errors: [{
+                            field: 'email',
+                            message: 'Email sudah digunakan oleh wali murid lain',
+                            value: data.email
+                        }]
+                });
+            }
             console.log(`[${requestId}] Calling ParentService.createParent`);
             const parent = await ParentService_1.default.createParent(data);
-            console.log(`[${requestId}] Parent created successfully with ID:`, parent.id);
+            console.log(`[${requestId}] Parent created successfully`);
             if (data.students && Array.isArray(data.students)) {
-                console.log(`[${requestId}] Adding ${data.students.length} students to parent:`, data.students);
                 for (const studentData of data.students) {
-                    console.log(`[${requestId}] Looking for student with NIPD:`, studentData.nipd);
                     const student = await StudentService_1.default.getStudentByNIPD(studentData.nipd);
                     if (student) {
-                        console.log(`[${requestId}] Found student:`, { id: student.id, nipd: student.nipd, nama: student.nama });
                         await ParentService_1.default.addStudentToParent(parent.id, student.id, studentData.relationship_type || 'wali', studentData.is_primary_contact || false);
-                        console.log(`[${requestId}] Added student ${student.nipd} to parent successfully`);
-                    }
-                    else {
-                        console.log(`[${requestId}] Student with NIPD ${studentData.nipd} not found`);
                     }
                 }
-            }
-            else {
-                console.log(`[${requestId}] No students data provided or not an array:`, data.students);
             }
             return response.redirect("/admin/parents");
         }
         catch (error) {
             console.error(`[${requestId}] Error creating parent:`, error);
-            if (error.code === 'SQLITE_CONSTRAINT_UNIQUE' || error.message.includes('UNIQUE constraint failed')) {
-                if (data && data.email) {
-                    try {
-                        const existingParent = await ParentService_1.default.getParentByEmail(data.email);
-                        if (existingParent) {
-                            console.log(`[${requestId}] Parent with email ${data.email} already exists, returning success for idempotent operation`);
-                            return response.redirect("/admin/parents");
-                        }
-                    }
-                    catch (checkError) {
-                        console.error('Error checking existing parent:', checkError);
-                    }
-                }
-                return response.status(422).json({
+            if (error.code === 'SQLITE_CONSTRAINT_UNIQUE' || error.code === '23505') {
+                return response.status(400).json({
                     error: 'Email sudah digunakan',
                     errors: [{
                             field: 'email',
@@ -142,15 +131,23 @@ class ParentController {
         try {
             const { id } = request.params;
             const data = await request.json();
-            const errors = ParentService_1.default.validateParentData(data);
+            const existingParent = await ParentService_1.default.getParentById(id);
+            if (!existingParent) {
+                return response.status(404).json({ error: 'Wali murid tidak ditemukan' });
+            }
+            const validationData = { ...data };
+            if (!data.password || data.password.trim() === '') {
+                delete validationData.password;
+            }
+            const errors = ParentService_1.default.validateParentData(validationData);
             if (errors.length > 0) {
                 return response.status(400).json({
                     error: 'Data tidak valid',
                     errors
                 });
             }
-            const existingParent = await ParentService_1.default.getParentByEmail(data.email);
-            if (existingParent && existingParent.id !== id) {
+            const parentWithSameEmail = await ParentService_1.default.getParentByEmail(data.email);
+            if (parentWithSameEmail && parentWithSameEmail.id !== id) {
                 return response.status(400).json({
                     error: 'Email sudah digunakan',
                     errors: [{

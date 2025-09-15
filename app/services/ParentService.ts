@@ -214,12 +214,15 @@ class ParentService {
             });
         }
         
-        if (!data.password || data.password.length < 6) {
-            errors.push({
-                field: 'password',
-                message: 'Password minimal 6 karakter',
-                value: data.password
-            });
+        // Only validate password if it's provided (for update operations)
+        if (data.hasOwnProperty('password')) {
+            if (!data.password || data.password.length < 6) {
+                errors.push({
+                    field: 'password',
+                    message: 'Password minimal 6 karakter',
+                    value: data.password
+                });
+            }
         }
         
         return errors;

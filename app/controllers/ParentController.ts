@@ -170,9 +170,20 @@ class ParentController {
         try {
             const { id } = request.params;
             const data = await request.json();
-            
-            // Validate data
-            const errors = ParentService.validateParentData(data);
+
+            // Check if parent exists
+            const existingParent = await ParentService.getParentById(id);
+            if (!existingParent) {
+                return response.status(404).json({ error: 'Wali murid tidak ditemukan' });
+            }
+
+            // Validate data (skip password validation if not provided)
+            const validationData = { ...data };
+            if (!data.password || data.password.trim() === '') {
+                delete validationData.password;
+            }
+
+            const errors = ParentService.validateParentData(validationData);
             if (errors.length > 0) {
                 return response.status(400).json({
                     error: 'Data tidak valid',
@@ -181,8 +192,8 @@ class ParentController {
             }
             
             // Check if email already exists (excluding current parent)
-            const existingParent = await ParentService.getParentByEmail(data.email);
-            if (existingParent && existingParent.id !== id) {
+            const parentWithSameEmail = await ParentService.getParentByEmail(data.email);
+            if (parentWithSameEmail && parentWithSameEmail.id !== id) {
                 return response.status(400).json({
                     error: 'Email sudah digunakan',
                     errors: [{

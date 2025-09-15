@@ -44,32 +44,21 @@ class ParentService {
         return await DB_1.default.from('parents').where('email', email).first();
     }
     async createParent(data) {
-        const id = (0, crypto_1.randomUUID)();
-        const now = (0, dayjs_1.default)().valueOf();
         const hashedPassword = this.hashPassword(data.password);
         const parentData = {
-            id,
+            id: (0, crypto_1.randomUUID)(),
             nama: data.nama,
             email: data.email,
             password: hashedPassword,
             phone: data.phone || null,
             notes: data.notes || null,
             is_active: true,
-            created_at: now,
-            updated_at: now
+            created_at: (0, dayjs_1.default)().valueOf(),
+            updated_at: (0, dayjs_1.default)().valueOf()
         };
-        return await DB_1.default.transaction(async (trx) => {
-            const existingParent = await trx.from('parents')
-                .where('email', data.email)
-                .first();
-            if (existingParent) {
-                const { password, ...parentWithoutPassword } = existingParent;
-                return parentWithoutPassword;
-            }
-            await trx.from('parents').insert(parentData);
-            const { password, ...parentWithoutPassword } = parentData;
-            return parentWithoutPassword;
-        });
+        await DB_1.default.from('parents').insert(parentData);
+        const { password, ...parentWithoutPassword } = parentData;
+        return parentWithoutPassword;
     }
     async updateParent(id, data) {
         const updateData = {
@@ -143,12 +132,14 @@ class ParentService {
                 value: data.email
             });
         }
-        if (!data.password || data.password.length < 6) {
-            errors.push({
-                field: 'password',
-                message: 'Password minimal 6 karakter',
-                value: data.password
-            });
+        if (data.hasOwnProperty('password')) {
+            if (!data.password || data.password.length < 6) {
+                errors.push({
+                    field: 'password',
+                    message: 'Password minimal 6 karakter',
+                    value: data.password
+                });
+            }
         }
         return errors;
     }
