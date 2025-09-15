@@ -197,9 +197,14 @@ class SchoolAuthController {
     async getAdminDashboard(user, response) {
         const stats = {
             total_students: await DB_1.default.from("students").where("is_active", true).count("* as count").first(),
-            total_teachers: await DB_1.default.from("users").where("role", "teacher").count("* as count").first(),
-            total_parents: await DB_1.default.from("users").where("role", "parent").count("* as count").first(),
-            total_classes: await DB_1.default.from("classes").count("* as count").first(),
+            total_teachers: await DB_1.default.from("teachers").where("is_active", true).count("* as count").first(),
+            total_parents: await DB_1.default.from("parents").where("is_active", true).count("* as count").first(),
+            total_classes: await DB_1.default.from("students")
+                .where("is_active", true)
+                .whereNotNull("kelas")
+                .where("kelas", "!=", "")
+                .countDistinct("kelas as count")
+                .first(),
         };
         let appVersion = "1.0.0";
         try {
