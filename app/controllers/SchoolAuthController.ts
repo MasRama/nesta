@@ -214,12 +214,17 @@ class SchoolAuthController {
    }
 
    private async getAdminDashboard(user: any, response: Response) {
-      // Get system statistics
+      // Get system statistics with real-time data from appropriate tables
       const stats = {
          total_students: await DB.from("students").where("is_active", true).count("* as count").first(),
-         total_teachers: await DB.from("users").where("role", "teacher").count("* as count").first(),
-         total_parents: await DB.from("users").where("role", "parent").count("* as count").first(),
-         total_classes: await DB.from("classes").count("* as count").first(),
+         total_teachers: await DB.from("teachers").where("is_active", true).count("* as count").first(),
+         total_parents: await DB.from("parents").where("is_active", true).count("* as count").first(),
+         total_classes: await DB.from("students")
+            .where("is_active", true)
+            .whereNotNull("kelas")
+            .where("kelas", "!=", "")
+            .countDistinct("kelas as count")
+            .first(),
       };
 
       // Get version from package.json
