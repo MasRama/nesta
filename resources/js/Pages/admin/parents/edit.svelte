@@ -17,8 +17,9 @@
    };
    
    let isLoading = false;
+   let isSubmitted = false; // Track if form has been submitted
    let currentSection = 'parents';
-   
+
    // Student management state
    let studentSearch = {
       nipd: '',
@@ -122,18 +123,23 @@
       }
    }
    
-   async function handleSubmit() {
-      if (isLoading) return;
-      
+   async function handleSubmit(event) {
+      // Prevent default and immediate disable
+      event.preventDefault();
+
+      if (isLoading || isSubmitted) return;
+
+      // Immediately set both flags to prevent double submission
       isLoading = true;
+      isSubmitted = true;
       errors = {};
-      
+
       // Only include password if it's not empty
       const submitData = { ...form };
       if (!submitData.password) {
          delete submitData.password;
       }
-      
+
       router.put(`/admin/parents/${parent.id}`, submitData, {
          onSuccess: () => {
             router.visit('/admin/parents');
@@ -141,6 +147,8 @@
          onError: (validationErrors) => {
             errors = validationErrors;
             console.log('Validation errors:', validationErrors);
+            // Reset submitted flag on error so user can retry
+            isSubmitted = false;
          },
          onFinish: () => {
             isLoading = false;
@@ -201,7 +209,7 @@
          <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <!-- Basic Information Form -->
             <div class="lg:col-span-1">
-               <form on:submit|preventDefault={handleSubmit}>
+               <form on:submit={handleSubmit}>
                   <div class="bg-white rounded-xl shadow-sm border border-gray-200 fade-in-up" style="animation-delay: 0.1s">
                      <div class="px-6 py-4 border-b border-gray-200">
                         <h3 class="text-lg font-medium text-gray-900">Informasi Dasar</h3>
@@ -296,7 +304,7 @@
                            </button>
                            <button
                               type="submit"
-                              disabled={isLoading}
+                              disabled={isLoading || isSubmitted}
                               class="px-6 py-2.5 bg-gradient-to-r from-red-600 to-rose-600 text-white rounded-lg hover:from-red-700 hover:to-rose-700 disabled:opacity-50 transition-all duration-200 flex items-center gap-2"
                            >
                               {#if isLoading}

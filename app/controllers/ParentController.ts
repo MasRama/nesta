@@ -98,6 +98,19 @@ class ParentController {
             console.error(`[${requestId}] Error creating parent:`, error);
             
             if (error.code === 'SQLITE_CONSTRAINT_UNIQUE' || error.code === '23505') {
+                // If we have the data and it's a duplicate, check if parent exists and return success
+                if (data && data.email) {
+                    try {
+                        const existingParent = await ParentService.getParentByEmail(data.email);
+                        if (existingParent) {
+                            // Return success response for idempotent operation
+                            return response.redirect("/admin/parents");
+                        }
+                    } catch (checkError) {
+                        console.error('Error checking existing parent:', checkError);
+                    }
+                }
+
                 return response.status(400).json({
                     error: 'Email sudah digunakan',
                     errors: [{

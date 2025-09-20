@@ -80,28 +80,45 @@ class ParentService {
     }
     
     /**
-     * Create new parent
+     * Create new parent with transaction and duplicate prevention
      */
     async createParent(data: ParentData) {
+        const id = randomUUID();
         const hashedPassword = this.hashPassword(data.password);
-        
+        const now = dayjs().valueOf();
+
         const parentData = {
-            id: randomUUID(),
+            id,
             nama: data.nama,
             email: data.email,
             password: hashedPassword,
             phone: data.phone || null,
             notes: data.notes || null,
             is_active: true,
-            created_at: dayjs().valueOf(),
-            updated_at: dayjs().valueOf()
+            created_at: now,
+            updated_at: now
         };
-        
-        await DB.from('parents').insert(parentData);
-        
-        // Return parent without password
-        const { password, ...parentWithoutPassword } = parentData;
-        return parentWithoutPassword;
+
+        // Use transaction to ensure atomicity
+        return await DB.transaction(async (trx) => {
+            // Double-check for existing parent within transaction
+            const existingParent = await trx.from('parents')
+                .where('email', data.email)
+                .first();
+
+            if (existingParent) {
+                // If parent already exists, return it (idempotent operation)
+                const { password, ...parentWithoutPassword } = existingParent;
+                return parentWithoutPassword;
+            }
+
+            // Insert new parent
+            await trx.from('parents').insert(parentData);
+
+            // Return the created parent without password
+            const { password, ...parentWithoutPassword } = parentData;
+            return parentWithoutPassword;
+        });
     }
     
     /**

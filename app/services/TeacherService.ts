@@ -55,12 +55,19 @@ class TeacherService {
     }
     
     /**
-     * Get teacher by ID
+     * Get teacher by ID (only active teachers)
      */
     async getTeacherById(id: string) {
         return await DB.from('teachers').where('id', id).where('is_active', true).first();
     }
-    
+
+    /**
+     * Get teacher by ID for edit operations (regardless of active status)
+     */
+    async getTeacherByIdForEdit(id: string) {
+        return await DB.from('teachers').where('id', id).first();
+    }
+
    /**
      * Get teacher by NIP
      */
@@ -76,28 +83,55 @@ class TeacherService {
     }
     
     /**
-     * Create new teacher
+     * Create new teacher with transaction and duplicate prevention
      */
     async createTeacher(data: TeacherData) {
+        const id = randomUUID();
         const hashedPassword = this.hashPassword(data.password);
-        
+        const now = Date.now();
+
         const teacherData = {
-            id: randomUUID(),
+            id,
             nip: data.nip,
             nama: data.nama,
             email: data.email,
             password: hashedPassword,
             phone: data.phone || null,
             is_active: true,
-            created_at: Date.now(),
-            updated_at: Date.now()
+            created_at: now,
+            updated_at: now
         };
-        
-        await DB.from('teachers').insert(teacherData);
-        
-        // Return teacher without password
-        const { password, ...teacherWithoutPassword } = teacherData;
-        return teacherWithoutPassword;
+
+        // Use transaction to ensure atomicity
+        return await DB.transaction(async (trx) => {
+            // Double-check for existing teacher within transaction
+            const existingTeacherByNIP = await trx.from('teachers')
+                .where('nip', data.nip)
+                .first();
+
+            if (existingTeacherByNIP) {
+                // If teacher already exists, return it (idempotent operation)
+                const { password, ...teacherWithoutPassword } = existingTeacherByNIP;
+                return teacherWithoutPassword;
+            }
+
+            const existingTeacherByEmail = await trx.from('teachers')
+                .where('email', data.email)
+                .first();
+
+            if (existingTeacherByEmail) {
+                // If teacher already exists, return it (idempotent operation)
+                const { password, ...teacherWithoutPassword } = existingTeacherByEmail;
+                return teacherWithoutPassword;
+            }
+
+            // Insert new teacher
+            await trx.from('teachers').insert(teacherData);
+
+            // Return the created teacher without password
+            const { password, ...teacherWithoutPassword } = teacherData;
+            return teacherWithoutPassword;
+        });
     }
     
     /**
@@ -115,9 +149,9 @@ class TeacherService {
         }
         
         await DB.from('teachers').where('id', id).update(updateData);
-        
-        // Return updated teacher without password
-        const updatedTeacher = await this.getTeacherById(id);
+
+        // Return updated teacher without password (use edit method to get regardless of active status)
+        const updatedTeacher = await this.getTeacherByIdForEdit(id);
         if (updatedTeacher) {
             const { password, ...teacherWithoutPassword } = updatedTeacher;
             return teacherWithoutPassword;

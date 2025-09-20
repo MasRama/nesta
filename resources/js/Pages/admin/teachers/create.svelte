@@ -1,10 +1,10 @@
 <script>
    import { router } from '@inertiajs/svelte';
    import AdminHeader from '../../../Components/AdminHeader.svelte';
-   
+   import { teacherAPI, showToast, handleAPIError } from '../../../utils/api.js';
+
    export let user;
-   export let errors = {};
-   
+
    let form = {
       nip: '',
       nama: '',
@@ -14,33 +14,49 @@
       is_active: true,
       notes: ''
    };
-   
-   let isLoading = false;
-   
 
-   
+   let errors = {};
+   let isLoading = false;
+   let isSubmitted = false; // Track if form has been submitted
+
    function logout() {
       router.post('/logout');
    }
-   
-   async function handleSubmit() {
-      if (isLoading) return;
-      
+
+   async function handleSubmit(event) {
+      // Prevent default and immediate disable
+      event.preventDefault();
+
+      if (isLoading || isSubmitted) return;
+
+      // Immediately set both flags to prevent double submission
       isLoading = true;
+      isSubmitted = true;
       errors = {};
-      
-      router.post('/admin/teachers', form, {
-         onSuccess: () => {
-            router.visit('/admin/teachers');
-         },
-         onError: (validationErrors) => {
-            errors = validationErrors;
-            console.log('Validation errors:', validationErrors);
-         },
-         onFinish: () => {
-            isLoading = false;
+
+      try {
+         const loadingToast = showToast.loading('Menambahkan guru...');
+
+         const response = await teacherAPI.create(form);
+
+         showToast.dismiss(loadingToast);
+         showToast.success('Guru berhasil ditambahkan');
+
+         // Redirect to teachers list after successful creation
+         router.visit('/admin/teachers');
+
+      } catch (error) {
+         const errorResult = handleAPIError(error, 'Gagal menambahkan guru');
+
+         if (errorResult.type === 'validation') {
+            errors = errorResult.errors;
          }
-      });
+
+         // Reset submitted flag on error so user can retry
+         isSubmitted = false;
+      } finally {
+         isLoading = false;
+      }
    }
 </script>
 
@@ -99,7 +115,7 @@
    <!-- Main Content -->
    <main class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <div class="bg-white rounded-lg shadow-sm p-6">
-         <form on:submit|preventDefault={handleSubmit} class="space-y-6">
+         <form on:submit={handleSubmit} class="space-y-6">
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                <!-- NIP -->
                <div>
@@ -252,7 +268,7 @@
                </button>
                <button
                   type="submit"
-                  disabled={isLoading}
+                  disabled={isLoading || isSubmitted}
                   class="px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg hover:from-blue-700 hover:to-indigo-700 transition-all shadow-lg font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
                >
                   {#if isLoading}

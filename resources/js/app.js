@@ -1,5 +1,12 @@
 import { createInertiaApp } from '@inertiajs/svelte'
 import { mount } from 'svelte'
+import ToastProvider from './Components/ToastProvider.svelte'
+
+// Mount ToastProvider globally
+const toastContainer = document.createElement('div');
+toastContainer.id = 'toast-provider';
+document.body.appendChild(toastContainer);
+mount(ToastProvider, { target: toastContainer });
 
 createInertiaApp({
   resolve: name => {

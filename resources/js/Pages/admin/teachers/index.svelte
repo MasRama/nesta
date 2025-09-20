@@ -2,54 +2,96 @@
    import { router } from '@inertiajs/svelte';
    import AdminHeader from '../../../Components/AdminHeader.svelte';
    import AdminNavigation from '../../../Components/AdminNavigation.svelte';
+   import { teacherAPI, showToast } from '../../../utils/api.js';
+   import { onMount } from 'svelte';
 
-   
-   export let teachers = [];
-   export let total = 0;
-   export let page = 1;
-   export let limit = 10;
-   export let totalPages = 1;
-   export let filters = {};
+
    export let user;
-   
+
+   // Local state for data management
+   let teachers = [];
+   let total = 0;
+   let page = 1;
+   let limit = 10;
+   let totalPages = 1;
+   let searchQuery = '';
    let isLoading = false;
-   let searchQuery = filters.search || '';
    let currentSection = 'teachers'; // Tab navigation state
-   
-   function handleSearch() {
-      const params = new URLSearchParams();
-      if (searchQuery) params.set('search', searchQuery);
-      params.set('page', '1');
-      
-      router.visit(`/admin/teachers?${params.toString()}`);
+
+   // Load teachers data on component mount
+   onMount(() => {
+      loadTeachers();
+   });
+
+   // Function to load teachers data via API
+   async function loadTeachers() {
+      try {
+         isLoading = true;
+         const params = {
+            page,
+            limit,
+            search: searchQuery || undefined
+         };
+
+         const response = await teacherAPI.getAll(params);
+         const result = response.data;
+
+         teachers = result.data || [];
+         total = result.pagination?.total || 0;
+         totalPages = result.pagination?.totalPages || 1;
+
+      } catch (error) {
+         console.error('Error loading teachers:', error);
+         showToast.error('Gagal memuat data guru');
+      } finally {
+         isLoading = false;
+      }
    }
-   
-   function handlePageChange(newPage) {
-      const params = new URLSearchParams();
-      if (searchQuery) params.set('search', searchQuery);
-      params.set('page', newPage.toString());
-      
-      router.visit(`/admin/teachers?${params.toString()}`);
+
+   // Handle search with real-time data refresh
+   async function handleSearch() {
+      page = 1; // Reset to first page
+      await loadTeachers();
    }
-   
+
+   // Handle pagination with real-time data refresh
+   async function handlePageChange(newPage) {
+      page = newPage;
+      await loadTeachers();
+   }
+
+   // Navigate to create teacher page
    function createTeacher() {
       router.visit('/admin/teachers/create');
    }
-   
+
+   // Navigate to edit teacher page
    function editTeacher(id) {
       router.visit(`/admin/teachers/${id}/edit`);
    }
-   
-   function deleteTeacher(id, name) {
+
+   // Delete teacher with axios and real-time refresh
+   async function deleteTeacher(id, name) {
       if (confirm(`Apakah Anda yakin ingin menghapus guru "${name}"?`)) {
-         router.delete(`/admin/teachers/${id}`, {
-            onSuccess: () => {
-               router.reload();
-            }
-         });
+         try {
+            const loadingToast = showToast.loading('Menghapus guru...');
+
+            await teacherAPI.delete(id);
+
+            showToast.dismiss(loadingToast);
+            showToast.success('Guru berhasil dihapus');
+
+            // Refresh data after successful deletion
+            await loadTeachers();
+
+         } catch (error) {
+            console.error('Error deleting teacher:', error);
+            showToast.error('Gagal menghapus guru');
+         }
       }
    }
-   
+
+   // Utility function for date formatting
    function formatDate(dateString) {
       return new Date(dateString).toLocaleDateString('id-ID');
    }
@@ -91,9 +133,17 @@
 
                   <button
                      on:click={handleSearch}
-                     class="px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl hover:from-blue-700 hover:to-indigo-700 transition-all shadow-lg font-medium"
+                     disabled={isLoading}
+                     class="px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl hover:from-blue-700 hover:to-indigo-700 transition-all shadow-lg font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
                   >
-                     Cari
+                     {#if isLoading}
+                        <div class="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                     {:else}
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                        </svg>
+                     {/if}
+                     <span>Cari</span>
                   </button>
                </div>
 
@@ -132,7 +182,15 @@
                </div>
             </div>
 
-            {#if teachers.length > 0}
+            {#if isLoading}
+               <!-- Loading State -->
+               <div class="flex items-center justify-center py-12">
+                  <div class="text-center">
+                     <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+                     <p class="text-gray-600">Memuat data guru...</p>
+                  </div>
+               </div>
+            {:else if teachers.length > 0}
                <!-- Table Content -->
                <div class="overflow-x-auto">
                   <table class="min-w-full divide-y divide-blue-200/30">
@@ -198,7 +256,7 @@
                         <div class="flex items-center space-x-2">
                            <button
                               on:click={() => handlePageChange(page - 1)}
-                              disabled={page <= 1}
+                              disabled={page <= 1 || isLoading}
                               class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                            >
                               Sebelumnya
@@ -211,7 +269,8 @@
                               {#if pageNum <= totalPages}
                                  <button
                                     on:click={() => handlePageChange(pageNum)}
-                                    class="px-4 py-2 text-sm font-medium rounded-lg transition-colors {pageNum === page ? 'bg-blue-600 text-white' : 'text-gray-700 bg-white border border-gray-300 hover:bg-gray-50'}"
+                                    disabled={isLoading}
+                                    class="px-4 py-2 text-sm font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed {pageNum === page ? 'bg-blue-600 text-white' : 'text-gray-700 bg-white border border-gray-300 hover:bg-gray-50'}"
                                  >
                                     {pageNum}
                                  </button>
@@ -220,7 +279,7 @@
                            
                            <button
                               on:click={() => handlePageChange(page + 1)}
-                              disabled={page >= totalPages}
+                              disabled={page >= totalPages || isLoading}
                               class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                            >
                               Selanjutnya

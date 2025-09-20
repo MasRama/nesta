@@ -16,8 +16,9 @@
    };
    
    let isLoading = false;
+   let isSubmitted = false; // Track if form has been submitted
    let currentSection = 'parents';
-   
+
    // Student search state
    let studentSearch = {
       nipd: '',
@@ -84,12 +85,17 @@
       form.students = form.students.filter((_, i) => i !== index);
    }
    
-   async function handleSubmit() {
-      if (isLoading) return;
-      
+   async function handleSubmit(event) {
+      // Prevent default and immediate disable
+      event.preventDefault();
+
+      if (isLoading || isSubmitted) return;
+
+      // Immediately set both flags to prevent double submission
       isLoading = true;
+      isSubmitted = true;
       errors = {};
-      
+
       router.post('/admin/parents', form, {
          onSuccess: () => {
             router.visit('/admin/parents');
@@ -97,6 +103,8 @@
          onError: (validationErrors) => {
             errors = validationErrors;
             console.log('Validation errors:', validationErrors);
+            // Reset submitted flag on error so user can retry
+            isSubmitted = false;
          },
          onFinish: () => {
             isLoading = false;
@@ -145,7 +153,7 @@
             <p class="text-gray-600">Isi form di bawah untuk menambahkan wali murid baru</p>
          </div>
 
-         <form on:submit|preventDefault={handleSubmit} class="space-y-6">
+         <form on:submit={handleSubmit} class="space-y-6">
             <!-- Basic Information -->
             <div class="bg-white rounded-xl shadow-sm border border-gray-200 fade-in-up" style="animation-delay: 0.1s">
                <div class="px-6 py-4 border-b border-gray-200">
@@ -371,7 +379,7 @@
                </button>
                <button
                   type="submit"
-                  disabled={isLoading}
+                  disabled={isLoading || isSubmitted}
                   class="px-6 py-2.5 bg-gradient-to-r from-red-600 to-rose-600 text-white rounded-lg hover:from-red-700 hover:to-rose-700 disabled:opacity-50 transition-all duration-200 flex items-center gap-2"
                >
                   {#if isLoading}
