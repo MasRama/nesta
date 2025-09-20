@@ -1,5 +1,5 @@
 import { Knex } from "knex";
-import bcrypt from "bcrypt";
+import Authenticate from "../app/services/Authenticate";
 
 export async function seed(knex: Knex): Promise<void> {
     // Clear existing data in reverse order of dependencies
@@ -20,9 +20,9 @@ export async function seed(knex: Knex): Promise<void> {
     const subjectIpaId = '550e8400-e29b-41d4-a716-446655440005';
     const subjectIpsId = '550e8400-e29b-41d4-a716-446655440006';
 
-    // Hash passwords
-    const adminPassword = await bcrypt.hash('admin123', 10);
-    const teacherPassword = await bcrypt.hash('guru123', 10);
+    // Hash passwords using Authenticate service (PBKDF2)
+    const adminPassword = await Authenticate.hash('admin123');
+    const teacherPassword = await Authenticate.hash('guru123');
 
     const now = Date.now();
 
@@ -34,6 +34,7 @@ export async function seed(knex: Knex): Promise<void> {
         phone: '081234567890',
         is_verified: true,
         is_admin: true,
+        role: 'admin',
         password: adminPassword,
         remember_me_token: null,
         membership_date: new Date(),
@@ -51,6 +52,7 @@ export async function seed(knex: Knex): Promise<void> {
         phone: '081234567891',
         is_verified: true,
         is_admin: false,
+        role: 'teacher',
         password: teacherPassword,
         remember_me_token: null,
         membership_date: new Date(),

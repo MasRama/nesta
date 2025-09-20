@@ -1,5 +1,5 @@
 import { Knex } from "knex";
-import bcrypt from "bcrypt";
+import Authenticate from "../app/services/Authenticate";
 
 export async function seed(knex: Knex): Promise<void> {
     // Clear existing data in reverse order of dependencies
@@ -62,7 +62,7 @@ export async function seed(knex: Knex): Promise<void> {
     console.log('✅ Classes created: 7A, 7B');
 
     // 2. Insert Student Users
-    const studentPassword = await bcrypt.hash('siswa123', 10);
+    const studentPassword = await Authenticate.hash('siswa123');
 
     const studentUsers = [
         {
@@ -72,6 +72,7 @@ export async function seed(knex: Knex): Promise<void> {
             phone: '081234567892',
             is_verified: true,
             is_admin: false,
+            role: 'student',
             password: studentPassword,
             remember_me_token: null,
             membership_date: new Date(),
@@ -85,6 +86,7 @@ export async function seed(knex: Knex): Promise<void> {
             phone: '081234567893',
             is_verified: true,
             is_admin: false,
+            role: 'student',
             password: studentPassword,
             remember_me_token: null,
             membership_date: new Date(),
@@ -98,6 +100,7 @@ export async function seed(knex: Knex): Promise<void> {
             phone: '081234567894',
             is_verified: true,
             is_admin: false,
+            role: 'student',
             password: studentPassword,
             remember_me_token: null,
             membership_date: new Date(),
@@ -111,6 +114,7 @@ export async function seed(knex: Knex): Promise<void> {
             phone: '081234567895',
             is_verified: true,
             is_admin: false,
+            role: 'student',
             password: studentPassword,
             remember_me_token: null,
             membership_date: new Date(),
