@@ -160,11 +160,16 @@ class StudentController {
                 return response.status(400).json({ error: 'File CSV tidak ditemukan' });
             }
             const result = await StudentService_1.default.importFromCSV(csvContent);
+            let message = `Import selesai. ${result.success} siswa berhasil ditambahkan.`;
+            if (result.classesCreated.length > 0) {
+                message += ` ${result.classesCreated.length} kelas baru dibuat: ${result.classesCreated.join(', ')}.`;
+            }
             return response.json({
-                message: `Import selesai. ${result.success} siswa berhasil ditambahkan.`,
+                message,
                 success: result.success,
                 errors: result.errors,
-                duplicates: result.duplicates
+                duplicates: result.duplicates,
+                classesCreated: result.classesCreated
             });
         }
         catch (error) {

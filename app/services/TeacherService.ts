@@ -646,6 +646,50 @@ class TeacherService {
             };
         }
     }
+
+    /**
+     * Get teachers assigned to a specific subject
+     */
+    async getTeachersBySubject(subjectId: string): Promise<any[]> {
+        try {
+            const teachers = await DB.from("teacher_subjects as ts")
+                .join("teachers as t", "ts.teacher_id", "t.id")
+                .where("ts.subject_id", subjectId)
+                .where("ts.is_active", true)
+                .where("t.is_active", true)
+                .select(
+                    "t.id",
+                    "t.nama",
+                    "t.nip",
+                    "t.email",
+                    "t.phone"
+                )
+                .orderBy("t.nama");
+
+            return teachers;
+        } catch (error) {
+            console.error("Error getting teachers by subject:", error);
+            return [];
+        }
+    }
+
+    /**
+     * Check if teacher is assigned to subject
+     */
+    async isTeacherAssignedToSubject(teacherId: string, subjectId: string): Promise<boolean> {
+        try {
+            const assignment = await DB.from("teacher_subjects")
+                .where("teacher_id", teacherId)
+                .where("subject_id", subjectId)
+                .where("is_active", true)
+                .first();
+
+            return !!assignment;
+        } catch (error) {
+            console.error("Error checking teacher-subject assignment:", error);
+            return false;
+        }
+    }
 }
 
 export default new TeacherService();

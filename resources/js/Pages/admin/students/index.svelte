@@ -396,9 +396,14 @@
                   <p class="text-sm font-medium" class:text-green-800={importResult.success > 0} class:text-red-800={importResult.errors?.length > 0}>
                      {importResult.message}
                   </p>
+                  {#if importResult.classesCreated?.length > 0}
+                     <p class="text-sm text-blue-700 mt-1">
+                        ✅ Kelas baru dibuat: {importResult.classesCreated.join(', ')}
+                     </p>
+                  {/if}
                   {#if importResult.duplicates?.length > 0}
                      <p class="text-sm text-yellow-700 mt-1">
-                        NIPD yang sudah ada: {importResult.duplicates.join(', ')}
+                        ⚠️ NIPD yang sudah ada: {importResult.duplicates.join(', ')}
                      </p>
                   {/if}
                   {#if importResult.errors?.length > 0}

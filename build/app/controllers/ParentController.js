@@ -71,11 +71,30 @@ class ParentController {
                     }
                 }
             }
-            return response.redirect("/admin/parents");
+            return response.status(201).json({
+                success: true,
+                message: 'Wali murid berhasil ditambahkan',
+                data: parent
+            });
         }
         catch (error) {
             console.error(`[${requestId}] Error creating parent:`, error);
             if (error.code === 'SQLITE_CONSTRAINT_UNIQUE' || error.code === '23505') {
+                if (data && data.email) {
+                    try {
+                        const existingParent = await ParentService_1.default.getParentByEmail(data.email);
+                        if (existingParent) {
+                            return response.status(201).json({
+                                success: true,
+                                message: 'Wali murid berhasil ditambahkan',
+                                data: existingParent
+                            });
+                        }
+                    }
+                    catch (checkError) {
+                        console.error('Error checking existing parent:', checkError);
+                    }
+                }
                 return response.status(400).json({
                     error: 'Email sudah digunakan',
                     errors: [{
@@ -157,8 +176,12 @@ class ParentController {
                         }]
                 });
             }
-            await ParentService_1.default.updateParent(id, data);
-            return response.redirect("/admin/parents");
+            const updatedParent = await ParentService_1.default.updateParent(id, data);
+            return response.status(200).json({
+                success: true,
+                message: 'Data wali murid berhasil diperbarui',
+                data: updatedParent
+            });
         }
         catch (error) {
             console.error('Error updating parent:', error);

@@ -225,8 +225,10 @@ Route.delete("/admin/teachers/:id", [Auth, RoleAuth.admin()], TeacherController.
  * API endpoints for teacher data
  * ------------------------------------------------
  * GET   /api/teachers - Get teachers list (JSON)
+ * GET   /api/teachers/by-subject/:subjectId - Get teachers assigned to specific subject
  */
 Route.get("/api/teachers", [Auth, RoleAuth.admin()], TeacherController.getTeachersAPI);
+Route.get("/api/teachers/by-subject/:subjectId", [Auth, RoleAuth.admin()], TeacherController.getTeachersBySubject);
 
 /**
  * Parent Management Routes (Admin Only)

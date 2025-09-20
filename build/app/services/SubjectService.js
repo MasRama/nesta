@@ -281,37 +281,16 @@ class SubjectService {
         return classes.map(c => c.kelas);
     }
     async createSubjectSchedule(data) {
-        const id = (0, crypto_1.randomUUID)();
-        const now = Date.now();
-        const validationErrors = this.validateScheduleData(data);
-        if (validationErrors.length > 0) {
-            throw new Error(validationErrors.map(e => e.message).join(', '));
-        }
-        const conflicts = await this.checkScheduleConflicts(data);
-        if (conflicts.length > 0) {
-            throw new Error('Jadwal bertabrakan dengan jadwal yang sudah ada');
-        }
-        const scheduleData = {
-            id,
-            subject_id: data.subject_id,
-            kelas: data.kelas,
-            start_time: data.start_time,
-            end_time: data.end_time,
-            day: data.day,
-            notes: data.notes || null,
-            is_active: true,
-            created_at: now,
-            updated_at: now
-        };
-        await DB_1.default.from('subject_schedules').insert(scheduleData);
-        return scheduleData;
+        throw new Error('Method deprecated. Use ClassService.assignSubjectToClass for proper subject-class assignment with schedule.');
     }
     async getSubjectSchedules(subjectId) {
-        return await DB_1.default.from('subject_schedules')
-            .where('subject_id', subjectId)
-            .where('is_active', true)
-            .orderBy('day')
-            .orderBy('start_time');
+        return await DB_1.default.from('subject_classes as sc')
+            .join('classes as c', 'sc.class_id', 'c.id')
+            .where('sc.subject_id', subjectId)
+            .where('sc.is_active', true)
+            .select('sc.id', 'sc.day', 'sc.start_time', 'sc.end_time', 'sc.notes', 'c.name as kelas')
+            .orderBy('sc.day')
+            .orderBy('sc.start_time');
     }
     validateScheduleData(data) {
         const errors = [];
@@ -369,11 +348,14 @@ class SubjectService {
         return errors;
     }
     async checkScheduleConflicts(data) {
-        return await DB_1.default.from('subject_schedules')
-            .where('kelas', data.kelas)
+        let query = DB_1.default.from('subject_classes')
+            .where('class_id', data.class_id)
             .where('day', data.day)
-            .where('is_active', true)
-            .where(function () {
+            .where('is_active', true);
+        if (data.exclude_id) {
+            query = query.whereNot('id', data.exclude_id);
+        }
+        return await query.where(function () {
             this.where(function () {
                 this.where('start_time', '<=', data.start_time)
                     .where('end_time', '>', data.start_time);
@@ -390,10 +372,10 @@ class SubjectService {
         const timeRegex = /^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/;
         return timeRegex.test(time);
     }
-    async deleteSubjectSchedule(scheduleId) {
+    async deleteSubjectAssignment(assignmentId) {
         const now = Date.now();
-        return await DB_1.default.from('subject_schedules')
-            .where('id', scheduleId)
+        return await DB_1.default.from('subject_classes')
+            .where('id', assignmentId)
             .update({ is_active: false, updated_at: now });
     }
 }

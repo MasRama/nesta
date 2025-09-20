@@ -27,6 +27,10 @@
    let notes = '';
    let isSubmitting = false;
 
+   // Filtered teachers based on selected subject
+   let filteredTeachers = [];
+   let showTeacherWarning = false;
+
    // Search and filter
    let searchTerm = '';
    let filteredClasses = classes;
@@ -36,10 +40,20 @@
       if (searchTerm.trim() === '') {
          filteredClasses = classes;
       } else {
-         filteredClasses = classes.filter(cls => 
+         filteredClasses = classes.filter(cls =>
             cls.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
             (cls.teacher_name && cls.teacher_name.toLowerCase().includes(searchTerm.toLowerCase()))
          );
+      }
+   }
+
+   // Reactive teacher filtering based on selected subject
+   $: {
+      if (selectedSubject) {
+         filterTeachersBySubject(selectedSubject);
+      } else {
+         filteredTeachers = availableTeachers;
+         showTeacherWarning = false;
       }
    }
 
@@ -128,6 +142,37 @@
       endTime = '';
       notes = '';
       isSubmitting = false;
+      filteredTeachers = [];
+      showTeacherWarning = false;
+   }
+
+   async function filterTeachersBySubject(subjectId) {
+      try {
+         const response = await fetch(`/api/teachers/by-subject/${subjectId}`, {
+            headers: {
+               'X-Inertia': 'true'
+            }
+         });
+
+         if (response.ok) {
+            const result = await response.json();
+            filteredTeachers = result.data || [];
+            showTeacherWarning = filteredTeachers.length === 0;
+
+            // Reset selected teacher if current selection is not in filtered list
+            if (selectedSubjectTeacher && !filteredTeachers.find(t => t.id === selectedSubjectTeacher)) {
+               selectedSubjectTeacher = '';
+            }
+         } else {
+            console.error('Failed to fetch teachers by subject');
+            filteredTeachers = availableTeachers;
+            showTeacherWarning = false;
+         }
+      } catch (error) {
+         console.error('Error filtering teachers by subject:', error);
+         filteredTeachers = availableTeachers;
+         showTeacherWarning = false;
+      }
    }
 
    async function assignTeacher() {
@@ -195,6 +240,12 @@
          return;
       }
 
+      // Additional validation for teacher-subject assignment
+      if (showTeacherWarning) {
+         alert('Tidak dapat menambahkan mata pelajaran. Guru belum di-assign ke mata pelajaran ini.');
+         return;
+      }
+
       // Validate time logic
       if (startTime >= endTime) {
          alert('Waktu mulai harus lebih awal dari waktu selesai');
@@ -233,11 +284,21 @@
             endTime = '';
             notes = '';
          } else {
-            alert(result.error || 'Gagal menugaskan mata pelajaran');
+            // Show detailed error message
+            const errorMessage = result.error || 'Gagal menugaskan mata pelajaran';
+            if (errorMessage.includes('Guru belum di-assign')) {
+               alert('❌ ' + errorMessage + '\n\n💡 Solusi: Buka menu Mata Pelajaran → Pilih mata pelajaran → Assign guru terlebih dahulu.');
+            } else if (errorMessage.includes('bertabrakan') || errorMessage.includes('conflict')) {
+               alert('⏰ Jadwal bertabrakan dengan jadwal yang sudah ada.\n\n💡 Silakan pilih waktu yang berbeda atau cek jadwal yang sudah ada.');
+            } else if (errorMessage.includes('sudah ditugaskan')) {
+               alert('⚠️ ' + errorMessage + '\n\n💡 Mata pelajaran sudah ditugaskan ke kelas ini dengan guru yang sama.');
+            } else {
+               alert('❌ ' + errorMessage);
+            }
          }
       } catch (error) {
          console.error('Error assigning subject:', error);
-         alert('Gagal menugaskan mata pelajaran');
+         alert('🔧 Terjadi kesalahan sistem saat menugaskan mata pelajaran.\n\nSilakan coba lagi atau hubungi administrator.');
       } finally {
          isSubmitting = false;
       }
@@ -265,11 +326,12 @@
             // Refresh assigned subjects
             await openSubjectModal(selectedClass);
          } else {
-            alert(result.error || 'Gagal membatalkan penugasan mata pelajaran');
+            const errorMessage = result.error || 'Gagal membatalkan penugasan mata pelajaran';
+            alert('❌ ' + errorMessage + '\n\n💡 Silakan coba lagi atau hubungi administrator jika masalah berlanjut.');
          }
       } catch (error) {
          console.error('Error unassigning subject:', error);
-         alert('Gagal membatalkan penugasan mata pelajaran');
+         alert('🔧 Terjadi kesalahan sistem saat membatalkan penugasan.\n\nSilakan coba lagi atau hubungi administrator.');
       }
    }
 </script>
@@ -543,17 +605,45 @@
                            <label for="subject-teacher-select" class="block text-sm font-medium text-gray-700 mb-2">
                               Guru Pengajar <span class="text-red-500">*</span>
                            </label>
+
+                           {#if showTeacherWarning}
+                              <div class="mb-3 p-3 bg-yellow-50 border border-yellow-200 rounded-md">
+                                 <div class="flex">
+                                    <div class="flex-shrink-0">
+                                       <svg class="h-5 w-5 text-yellow-400" viewBox="0 0 20 20" fill="currentColor">
+                                          <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
+                                       </svg>
+                                    </div>
+                                    <div class="ml-3">
+                                       <p class="text-sm text-yellow-700">
+                                          <strong>Peringatan:</strong> Tidak ada guru yang di-assign ke mata pelajaran ini.
+                                          Silakan assign guru ke mata pelajaran terlebih dahulu di menu <strong>Mata Pelajaran</strong>.
+                                       </p>
+                                    </div>
+                                 </div>
+                              </div>
+                           {/if}
+
                            <select
                               id="subject-teacher-select"
                               bind:value={selectedSubjectTeacher}
                               class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                               required
+                              disabled={!selectedSubject || showTeacherWarning}
                            >
-                              <option value="">-- Pilih Guru --</option>
-                              {#each availableTeachers as teacher}
+                              <option value="">
+                                 {selectedSubject ? '-- Pilih Guru --' : '-- Pilih Mata Pelajaran Terlebih Dahulu --'}
+                              </option>
+                              {#each filteredTeachers as teacher}
                                  <option value={teacher.id}>{teacher.nama} (NIP: {teacher.nip})</option>
                               {/each}
                            </select>
+
+                           {#if selectedSubject && filteredTeachers.length > 0}
+                              <p class="text-sm text-green-600 mt-1">
+                                 ✓ Menampilkan {filteredTeachers.length} guru yang sudah di-assign ke mata pelajaran ini
+                              </p>
+                           {/if}
                         </div>
 
                         <div>

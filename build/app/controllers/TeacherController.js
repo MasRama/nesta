@@ -35,32 +35,52 @@ class TeacherController {
         }
     }
     async store(request, response) {
+        let data;
+        const requestId = Date.now() + '-' + Math.random().toString(36).substring(2, 11);
         try {
-            const data = await request.json();
+            data = await request.json();
+            console.log(`[${requestId}] Creating teacher with data:`, { nip: data.nip, nama: data.nama, email: data.email });
             const errors = TeacherService_1.default.validateTeacherData(data);
             if (errors.length > 0) {
+                console.log(`[${requestId}] Validation failed:`, errors);
                 return response.status(400).json({
                     error: 'Data tidak valid',
                     errors
                 });
             }
-            const existingTeacher = await TeacherService_1.default.getTeacherByNIP(data.nip);
-            if (existingTeacher) {
-                return response.status(400).json({
-                    error: 'NIP sudah terdaftar'
-                });
-            }
-            const existingEmail = await TeacherService_1.default.getTeacherByEmail(data.email);
-            if (existingEmail) {
-                return response.status(400).json({
-                    error: 'Email sudah terdaftar'
-                });
-            }
-            await TeacherService_1.default.createTeacher(data);
-            return response.redirect("/admin/teachers");
+            console.log(`[${requestId}] Calling TeacherService.createTeacher`);
+            const newTeacher = await TeacherService_1.default.createTeacher(data);
+            console.log(`[${requestId}] Teacher created successfully`);
+            return response.status(201).json({
+                success: true,
+                message: 'Guru berhasil ditambahkan',
+                data: newTeacher
+            });
         }
         catch (error) {
-            console.error('Error creating teacher:', error);
+            console.error(`[${requestId}] Error creating teacher:`, error);
+            if (error.code === 'SQLITE_CONSTRAINT_UNIQUE' || error.message.includes('UNIQUE constraint failed')) {
+                if (data && (data.nip || data.email)) {
+                    try {
+                        const existingTeacher = data.nip
+                            ? await TeacherService_1.default.getTeacherByNIP(data.nip)
+                            : await TeacherService_1.default.getTeacherByEmail(data.email);
+                        if (existingTeacher) {
+                            return response.status(200).json({
+                                success: true,
+                                message: 'Guru sudah ada (operasi idempotent)',
+                                data: existingTeacher
+                            });
+                        }
+                    }
+                    catch (checkError) {
+                        console.error('Error checking existing teacher:', checkError);
+                    }
+                }
+                return response.status(400).json({
+                    error: 'NIP atau Email sudah terdaftar'
+                });
+            }
             return response.status(500).json({ error: 'Gagal menambahkan guru' });
         }
     }
@@ -81,22 +101,26 @@ class TeacherController {
     async edit(request, response) {
         try {
             const { id } = request.params;
-            const teacher = await TeacherService_1.default.getTeacherById(id);
+            console.log('Loading teacher for edit, ID:', id);
+            const teacher = await TeacherService_1.default.getTeacherByIdForEdit(id);
+            console.log('Teacher data loaded:', teacher ? 'Found' : 'Not found');
             if (!teacher) {
-                return response.status(404).json({ error: 'Guru tidak ditemukan' });
+                console.log('Teacher not found, redirecting to teachers list');
+                return response.redirect("/admin/teachers?error=teacher_not_found");
             }
+            console.log('Rendering edit page with teacher data');
             return response.inertia("admin/teachers/edit", { teacher });
         }
         catch (error) {
             console.error('Error loading edit form:', error);
-            return response.status(500).json({ error: 'Gagal memuat form edit' });
+            return response.redirect("/admin/teachers?error=load_failed");
         }
     }
     async update(request, response) {
         try {
             const { id } = request.params;
             const data = await request.json();
-            const existingTeacher = await TeacherService_1.default.getTeacherById(id);
+            const existingTeacher = await TeacherService_1.default.getTeacherByIdForEdit(id);
             if (!existingTeacher) {
                 return response.status(404).json({ error: 'Guru tidak ditemukan' });
             }
@@ -127,8 +151,12 @@ class TeacherController {
                     });
                 }
             }
-            await TeacherService_1.default.updateTeacher(id, data);
-            return response.redirect("/admin/teachers");
+            const updatedTeacher = await TeacherService_1.default.updateTeacher(id, data);
+            return response.status(200).json({
+                success: true,
+                message: 'Data guru berhasil diperbarui',
+                data: updatedTeacher
+            });
         }
         catch (error) {
             console.error('Error updating teacher:', error);
@@ -138,16 +166,26 @@ class TeacherController {
     async destroy(request, response) {
         try {
             const { id } = request.params;
-            const teacher = await TeacherService_1.default.getTeacherById(id);
+            const teacher = await TeacherService_1.default.getTeacherByIdForEdit(id);
             if (!teacher) {
-                return response.status(404).json({ error: 'Guru tidak ditemukan' });
+                return response.status(404).json({
+                    success: false,
+                    error: 'Guru tidak ditemukan'
+                });
             }
             await TeacherService_1.default.deleteTeacher(id);
-            return response.redirect("/admin/teachers");
+            return response.status(200).json({
+                success: true,
+                message: 'Guru berhasil dihapus',
+                data: { id }
+            });
         }
         catch (error) {
             console.error('Error deleting teacher:', error);
-            return response.status(500).json({ error: 'Gagal menghapus guru' });
+            return response.status(500).json({
+                success: false,
+                error: 'Gagal menghapus guru'
+            });
         }
     }
     async getTeachersAPI(request, response) {
@@ -161,6 +199,23 @@ class TeacherController {
         catch (error) {
             console.error('Error fetching teachers API:', error);
             return response.status(500).json({ error: 'Gagal mengambil data guru' });
+        }
+    }
+    async getTeachersBySubject(request, response) {
+        try {
+            const { subjectId } = request.params;
+            if (!subjectId) {
+                return response.status(400).json({ error: 'Subject ID wajib diisi' });
+            }
+            const teachers = await TeacherService_1.default.getTeachersBySubject(subjectId);
+            return response.json({
+                success: true,
+                data: teachers
+            });
+        }
+        catch (error) {
+            console.error('Error fetching teachers by subject:', error);
+            return response.status(500).json({ error: 'Gagal mengambil data guru berdasarkan mata pelajaran' });
         }
     }
 }

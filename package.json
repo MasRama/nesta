@@ -1,6 +1,6 @@
 {
   "name": "netsa",
-  "version": "1.0.20",
+  "version": "1.0.21",
   "description": "Laju (Indonesian for 'fast/swift') is a high-performance TypeScript web framework combining HyperExpress, Svelte 5, and Inertia.js for building modern full-stack applications. Features server-side rendering, real-time capabilities, and seamless client-server state management.",
   "main": "server.ts",
   "scripts": {
@@ -17,10 +17,12 @@
   "dependencies": {
     "@inertiajs/svelte": "^2.0.0-beta.2",
     "@tailwindcss/typography": "^0.5.16",
+    "@types/bcrypt": "^6.0.0",
     "@types/multer": "^2.0.0",
     "@types/qrcode": "^1.5.5",
     "@types/uuid": "^10.0.0",
     "axios": "^1.7.7",
+    "bcrypt": "^6.0.0",
     "better-sqlite3": "^11.5.0",
     "concurrently": "^9.0.1",
     "cors": "^2.8.5",

@@ -196,7 +196,7 @@ class StudentController {
     }
 
     /**
-     * Import students from CSV
+     * Import students from CSV with auto-create class functionality
      */
     public async importCSV(request: Request, response: Response) {
         try {
@@ -208,11 +208,18 @@ class StudentController {
 
             const result = await StudentService.importFromCSV(csvContent);
 
+            // Build success message with class creation info
+            let message = `Import selesai. ${result.success} siswa berhasil ditambahkan.`;
+            if (result.classesCreated.length > 0) {
+                message += ` ${result.classesCreated.length} kelas baru dibuat: ${result.classesCreated.join(', ')}.`;
+            }
+
             return response.json({
-                message: `Import selesai. ${result.success} siswa berhasil ditambahkan.`,
+                message,
                 success: result.success,
                 errors: result.errors,
-                duplicates: result.duplicates
+                duplicates: result.duplicates,
+                classesCreated: result.classesCreated
             });
         } catch (error) {
             console.error('Error importing CSV:', error);

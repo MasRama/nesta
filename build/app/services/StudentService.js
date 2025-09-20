@@ -7,6 +7,7 @@ const DB_1 = __importDefault(require("./DB"));
 const crypto_1 = require("crypto");
 const dayjs_1 = __importDefault(require("dayjs"));
 const customParseFormat_1 = __importDefault(require("dayjs/plugin/customParseFormat"));
+const ClassService_1 = __importDefault(require("./ClassService"));
 dayjs_1.default.extend(customParseFormat_1.default);
 class StudentService {
     async getStudents(page = 1, limit = 10, search, kelas) {
@@ -223,9 +224,30 @@ class StudentService {
     async importFromCSV(csvContent) {
         const { data, errors } = this.parseCSV(csvContent);
         const duplicates = [];
+        const classesCreated = [];
         let success = 0;
         if (errors.length > 0) {
-            return { success, errors, duplicates };
+            return { success, errors, duplicates, classesCreated };
+        }
+        const uniqueClasses = [...new Set(data.map(student => student.kelas))];
+        for (const className of uniqueClasses) {
+            try {
+                const existingClass = await DB_1.default.from('classes').where('name', className).first();
+                if (!existingClass) {
+                    await ClassService_1.default.ensureClassExists(className);
+                    classesCreated.push(className);
+                    console.log(`✅ Auto-created class: ${className}`);
+                }
+            }
+            catch (error) {
+                console.error(`Error ensuring class exists: ${className}`, error);
+                errors.push({
+                    row: 0,
+                    field: 'kelas',
+                    message: `Gagal membuat kelas ${className}: ${error.message}`,
+                    value: className
+                });
+            }
         }
         for (const studentData of data) {
             try {
@@ -246,7 +268,7 @@ class StudentService {
                 });
             }
         }
-        return { success, errors, duplicates };
+        return { success, errors, duplicates, classesCreated };
     }
     async exportToCSV(filters) {
         let query = DB_1.default.from('students').where('is_active', true);

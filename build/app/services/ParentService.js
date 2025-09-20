@@ -44,21 +44,32 @@ class ParentService {
         return await DB_1.default.from('parents').where('email', email).first();
     }
     async createParent(data) {
+        const id = (0, crypto_1.randomUUID)();
         const hashedPassword = this.hashPassword(data.password);
+        const now = (0, dayjs_1.default)().valueOf();
         const parentData = {
-            id: (0, crypto_1.randomUUID)(),
+            id,
             nama: data.nama,
             email: data.email,
             password: hashedPassword,
             phone: data.phone || null,
             notes: data.notes || null,
             is_active: true,
-            created_at: (0, dayjs_1.default)().valueOf(),
-            updated_at: (0, dayjs_1.default)().valueOf()
+            created_at: now,
+            updated_at: now
         };
-        await DB_1.default.from('parents').insert(parentData);
-        const { password, ...parentWithoutPassword } = parentData;
-        return parentWithoutPassword;
+        return await DB_1.default.transaction(async (trx) => {
+            const existingParent = await trx.from('parents')
+                .where('email', data.email)
+                .first();
+            if (existingParent) {
+                const { password, ...parentWithoutPassword } = existingParent;
+                return parentWithoutPassword;
+            }
+            await trx.from('parents').insert(parentData);
+            const { password, ...parentWithoutPassword } = parentData;
+            return parentWithoutPassword;
+        });
     }
     async updateParent(id, data) {
         const updateData = {

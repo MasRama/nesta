@@ -28,6 +28,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 const DB_1 = __importDefault(require("../services/DB"));
 const Authenticate_1 = __importDefault(require("../services/Authenticate"));
+const TeacherService_1 = __importDefault(require("../services/TeacherService"));
 const crypto_1 = require("crypto");
 const dayjs_1 = __importDefault(require("dayjs"));
 const fs = __importStar(require("fs"));
@@ -55,11 +56,27 @@ class SchoolAuthController {
                         .redirect("/login");
                 }
             }
-            else {
-                return response
-                    .cookie("error", "Email/No.HP tidak terdaftar", 3000)
-                    .redirect("/login");
+            if (email && email.includes("@")) {
+                const teacher = await DB_1.default.from("teachers")
+                    .where("email", email)
+                    .where("is_active", true)
+                    .first();
+                if (teacher) {
+                    const password_match = this.compareTeacherPassword(password, teacher.password);
+                    if (password_match) {
+                        const userAccount = await this.getOrCreateUserForTeacher(teacher);
+                        return this.processRoleBasedAuth(userAccount, request, response);
+                    }
+                    else {
+                        return response
+                            .cookie("error", "Password salah", 3000)
+                            .redirect("/login");
+                    }
+                }
             }
+            return response
+                .cookie("error", "Email/No.HP tidak terdaftar", 3000)
+                .redirect("/login");
         };
         this.processRegister = async (request, response) => {
             let { email, password, name, role, student_id, teacher_id } = await request.json();
@@ -101,6 +118,54 @@ class SchoolAuthController {
                     return response.redirect("/");
             }
         };
+    }
+    compareTeacherPassword(password, hashedPassword) {
+        const salt = 'netsa_teacher_salt';
+        const hash = (0, crypto_1.pbkdf2Sync)(password, salt, 10000, 64, 'sha512').toString('hex');
+        return hash === hashedPassword;
+    }
+    async getOrCreateUserForTeacher(teacher) {
+        if (teacher.user_id) {
+            const existingUser = await DB_1.default.from("users").where("id", teacher.user_id).first();
+            if (existingUser) {
+                return existingUser;
+            }
+        }
+        const existingUser = await DB_1.default.from("users").where("email", teacher.email).first();
+        if (existingUser && existingUser.role === 'teacher') {
+            await DB_1.default.from("teachers")
+                .where("id", teacher.id)
+                .update({
+                user_id: existingUser.id,
+                updated_at: Date.now()
+            });
+            return existingUser;
+        }
+        const userId = (0, crypto_1.randomUUID)();
+        const hashedPassword = await Authenticate_1.default.hash('guru123');
+        const userData = {
+            id: userId,
+            name: teacher.nama,
+            email: teacher.email,
+            phone: teacher.phone || null,
+            password: hashedPassword,
+            role: 'teacher',
+            teacher_id: teacher.id,
+            is_verified: true,
+            is_admin: false,
+            created_at: (0, dayjs_1.default)().valueOf(),
+            updated_at: (0, dayjs_1.default)().valueOf()
+        };
+        await DB_1.default.transaction(async (trx) => {
+            await trx.from("users").insert(userData);
+            await trx.from("teachers")
+                .where("id", teacher.id)
+                .update({
+                user_id: userId,
+                updated_at: Date.now()
+            });
+        });
+        return userData;
     }
     async processRoleBasedAuth(user, request, response) {
         const token = (0, crypto_1.randomUUID)();
@@ -150,9 +215,9 @@ class SchoolAuthController {
         });
     }
     async getTeacherDashboard(user, response) {
-        const classes = await DB_1.default.from("classes")
-            .where("teacher_id", user.id)
-            .select("*");
+        const teacherSubjects = await TeacherService_1.default.getTeacherSubjects(user.id);
+        const weeklySchedule = await TeacherService_1.default.getTeacherWeeklySchedule(user.id);
+        const currentSchedule = await TeacherService_1.default.getCurrentActiveSchedule(user.id);
         const journals = await DB_1.default.from("teacher_journals")
             .where("teacher_id", user.id)
             .orderBy("created_at", "desc")
@@ -163,7 +228,9 @@ class SchoolAuthController {
             .orderBy("start_time", "asc");
         return response.inertia("dashboard/teacher", {
             user,
-            classes,
+            teacherSubjects,
+            weeklySchedule,
+            currentSchedule,
             journals,
             exams
         });

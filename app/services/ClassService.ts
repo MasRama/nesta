@@ -132,7 +132,6 @@ class ClassService {
                     description: `Kelas ${className}`,
                     max_students: 30,
                     teacher_id: null,
-                    schedule: null,
                     created_at: now,
                     updated_at: now
                 };
@@ -305,6 +304,17 @@ class ClassService {
 
             if (!teacher) {
                 throw new Error('Guru tidak ditemukan');
+            }
+
+            // Validate that teacher is assigned to this subject
+            const teacherSubjectAssignment = await DB.from('teacher_subjects')
+                .where('teacher_id', teacherId)
+                .where('subject_id', subjectId)
+                .where('is_active', true)
+                .first();
+
+            if (!teacherSubjectAssignment) {
+                throw new Error('Guru belum di-assign ke mata pelajaran ini. Silakan assign guru ke mata pelajaran terlebih dahulu di menu Mata Pelajaran.');
             }
 
             // Validate schedule inputs

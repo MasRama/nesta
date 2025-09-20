@@ -441,7 +441,8 @@ class SubjectService {
     }
 
     /**
-     * Create subject schedule
+     * Create subject schedule (DEPRECATED - Use ClassService.assignSubjectToClass instead)
+     * This method is kept for backward compatibility but should not be used for new code
      */
     async createSubjectSchedule(data: {
         subject_id: string;
@@ -451,47 +452,29 @@ class SubjectService {
         day: string;
         notes?: string;
     }) {
-        const id = randomUUID();
-        const now = Date.now();
-
-        // Validate schedule data
-        const validationErrors = this.validateScheduleData(data);
-        if (validationErrors.length > 0) {
-            throw new Error(validationErrors.map(e => e.message).join(', '));
-        }
-
-        // Check for schedule conflicts
-        const conflicts = await this.checkScheduleConflicts(data);
-        if (conflicts.length > 0) {
-            throw new Error('Jadwal bertabrakan dengan jadwal yang sudah ada');
-        }
-
-        const scheduleData = {
-            id,
-            subject_id: data.subject_id,
-            kelas: data.kelas,
-            start_time: data.start_time,
-            end_time: data.end_time,
-            day: data.day,
-            notes: data.notes || null,
-            is_active: true,
-            created_at: now,
-            updated_at: now
-        };
-
-        await DB.from('subject_schedules').insert(scheduleData);
-        return scheduleData;
+        throw new Error('Method deprecated. Use ClassService.assignSubjectToClass for proper subject-class assignment with schedule.');
     }
 
     /**
-     * Get subject schedules
+     * Get subject schedules (DEPRECATED - Use ClassService.getClassSubjects instead)
+     * This method is kept for backward compatibility but should not be used for new code
      */
     async getSubjectSchedules(subjectId: string) {
-        return await DB.from('subject_schedules')
-            .where('subject_id', subjectId)
-            .where('is_active', true)
-            .orderBy('day')
-            .orderBy('start_time');
+        // Return schedules from subject_classes table instead
+        return await DB.from('subject_classes as sc')
+            .join('classes as c', 'sc.class_id', 'c.id')
+            .where('sc.subject_id', subjectId)
+            .where('sc.is_active', true)
+            .select(
+                'sc.id',
+                'sc.day',
+                'sc.start_time',
+                'sc.end_time',
+                'sc.notes',
+                'c.name as kelas'
+            )
+            .orderBy('sc.day')
+            .orderBy('sc.start_time');
     }
 
     /**
@@ -567,34 +550,42 @@ class SubjectService {
     }
 
     /**
-     * Check for schedule conflicts
+     * Check for schedule conflicts in subject_classes table
+     * Updated to use the correct table after database cleanup
      */
     async checkScheduleConflicts(data: {
         subject_id: string;
-        kelas: string;
+        class_id: string;
         start_time: string;
         end_time: string;
         day: string;
+        exclude_id?: string; // Optional: exclude specific assignment from conflict check
     }) {
-        return await DB.from('subject_schedules')
-            .where('kelas', data.kelas)
+        let query = DB.from('subject_classes')
+            .where('class_id', data.class_id)
             .where('day', data.day)
-            .where('is_active', true)
-            .where(function() {
-                this.where(function() {
-                    // New schedule starts during existing schedule
-                    this.where('start_time', '<=', data.start_time)
-                        .where('end_time', '>', data.start_time);
-                }).orWhere(function() {
-                    // New schedule ends during existing schedule
-                    this.where('start_time', '<', data.end_time)
-                        .where('end_time', '>=', data.end_time);
-                }).orWhere(function() {
-                    // New schedule completely contains existing schedule
-                    this.where('start_time', '>=', data.start_time)
-                        .where('end_time', '<=', data.end_time);
-                });
+            .where('is_active', true);
+
+        // Exclude specific assignment if provided (useful for updates)
+        if (data.exclude_id) {
+            query = query.whereNot('id', data.exclude_id);
+        }
+
+        return await query.where(function() {
+            this.where(function() {
+                // New schedule starts during existing schedule
+                this.where('start_time', '<=', data.start_time)
+                    .where('end_time', '>', data.start_time);
+            }).orWhere(function() {
+                // New schedule ends during existing schedule
+                this.where('start_time', '<', data.end_time)
+                    .where('end_time', '>=', data.end_time);
+            }).orWhere(function() {
+                // New schedule completely contains existing schedule
+                this.where('start_time', '>=', data.start_time)
+                    .where('end_time', '<=', data.end_time);
             });
+        });
     }
 
     /**
@@ -606,12 +597,13 @@ class SubjectService {
     }
 
     /**
-     * Delete subject schedule
+     * Delete subject assignment from class (soft delete)
+     * Updated to use subject_classes table after database cleanup
      */
-    async deleteSubjectSchedule(scheduleId: string) {
+    async deleteSubjectAssignment(assignmentId: string) {
         const now = Date.now();
-        return await DB.from('subject_schedules')
-            .where('id', scheduleId)
+        return await DB.from('subject_classes')
+            .where('id', assignmentId)
             .update({ is_active: false, updated_at: now });
     }
 }

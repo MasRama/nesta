@@ -2,6 +2,7 @@ import DB from "./DB";
 import { randomUUID } from "crypto";
 import dayjs from "dayjs";
 import customParseFormat from "dayjs/plugin/customParseFormat";
+import ClassService from "./ClassService";
 
 dayjs.extend(customParseFormat);
 
@@ -332,16 +333,40 @@ class StudentService {
     }
 
     /**
-     * Import students from CSV
+     * Import students from CSV with auto-create class functionality
      */
-    async importFromCSV(csvContent: string): Promise<{ success: number, errors: ValidationError[], duplicates: string[] }> {
+    async importFromCSV(csvContent: string): Promise<{ success: number, errors: ValidationError[], duplicates: string[], classesCreated: string[] }> {
         const { data, errors } = this.parseCSV(csvContent);
         const duplicates: string[] = [];
+        const classesCreated: string[] = [];
         let success = 0;
 
         // If there are parsing errors, return early
         if (errors.length > 0) {
-            return { success, errors, duplicates };
+            return { success, errors, duplicates, classesCreated };
+        }
+
+        // Get unique classes from CSV data to ensure they exist
+        const uniqueClasses = [...new Set(data.map(student => student.kelas))];
+
+        // Ensure all classes exist (auto-create if needed)
+        for (const className of uniqueClasses) {
+            try {
+                const existingClass = await DB.from('classes').where('name', className).first();
+                if (!existingClass) {
+                    await ClassService.ensureClassExists(className);
+                    classesCreated.push(className);
+                    console.log(`✅ Auto-created class: ${className}`);
+                }
+            } catch (error) {
+                console.error(`Error ensuring class exists: ${className}`, error);
+                errors.push({
+                    row: 0,
+                    field: 'kelas',
+                    message: `Gagal membuat kelas ${className}: ${error.message}`,
+                    value: className
+                });
+            }
         }
 
         // Process each student
@@ -354,7 +379,7 @@ class StudentService {
                     continue;
                 }
 
-                // Create student
+                // Create student (class is guaranteed to exist now)
                 await this.createStudent(studentData);
                 success++;
             } catch (error) {
@@ -367,7 +392,7 @@ class StudentService {
             }
         }
 
-        return { success, errors, duplicates };
+        return { success, errors, duplicates, classesCreated };
     }
 
     /**

@@ -254,6 +254,28 @@ class TeacherController {
             return response.status(500).json({ error: 'Gagal mengambil data guru' });
         }
     }
+
+    /**
+     * Get teachers assigned to a specific subject
+     */
+    public async getTeachersBySubject(request: Request, response: Response) {
+        try {
+            const { subjectId } = request.params;
+
+            if (!subjectId) {
+                return response.status(400).json({ error: 'Subject ID wajib diisi' });
+            }
+
+            const teachers = await TeacherService.getTeachersBySubject(subjectId);
+            return response.json({
+                success: true,
+                data: teachers
+            });
+        } catch (error) {
+            console.error('Error fetching teachers by subject:', error);
+            return response.status(500).json({ error: 'Gagal mengambil data guru berdasarkan mata pelajaran' });
+        }
+    }
 }
 
 export default new TeacherController();
