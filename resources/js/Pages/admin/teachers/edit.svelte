@@ -135,11 +135,8 @@
          showToast.dismiss(loadingToast);
          showToast.success('Data guru berhasil diperbarui');
 
-         // Stay on current page instead of redirecting to maintain state
-         // Optionally update the teacher data with the response
-         if (response.data?.data) {
-            teacher = { ...teacher, ...response.data.data };
-         }
+         // Redirect to teachers list after successful update
+         router.visit('/admin/teachers');
 
       } catch (error) {
          const errorResult = handleAPIError(error, 'Gagal memperbarui data guru');

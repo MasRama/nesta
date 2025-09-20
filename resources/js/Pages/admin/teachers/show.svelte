@@ -2,6 +2,7 @@
    import { router } from '@inertiajs/svelte';
    import AdminHeader from '../../../Components/AdminHeader.svelte';
    import AdminNavigation from '../../../Components/AdminNavigation.svelte';
+   import { teacherAPI, showToast } from '../../../utils/api.js';
 
    export let teacher: {
       id: number;
@@ -22,13 +23,23 @@
       router.visit(`/admin/teachers/${teacher.id}/edit`);
    }
 
-   function deleteTeacher() {
+   async function deleteTeacher() {
       if (confirm('Apakah Anda yakin ingin menghapus guru ini?')) {
-         router.delete(`/admin/teachers/${teacher.id}`, {
-            onSuccess: () => {
-               router.visit('/admin/teachers');
-            }
-         });
+         try {
+            const loadingToast = showToast.loading('Menghapus guru...');
+
+            await teacherAPI.delete(teacher.id);
+
+            showToast.dismiss(loadingToast);
+            showToast.success('Guru berhasil dihapus');
+
+            // Redirect to teachers list after successful deletion
+            router.visit('/admin/teachers');
+
+         } catch (error) {
+            console.error('Error deleting teacher:', error);
+            showToast.error('Gagal menghapus guru');
+         }
       }
    }
 
