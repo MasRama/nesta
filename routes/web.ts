@@ -82,10 +82,12 @@ Route.get("/dashboard/admin", [Auth, RoleAuth.admin()], SchoolAuthController.get
  * GET   /api/attendance/class/:class_id - Get class attendance records
  * GET   /api/attendance/student/:student_id - Get student attendance history
  * GET   /api/attendance/stats/:student_id - Get attendance statistics
+ * GET   /api/attendance/today-schedules - Get teacher's schedules for today (Teacher)
  * POST  /api/attendance/close/:session_id - Close attendance session
  */
 Route.post("/api/attendance/scan-student", [Auth, RoleAuth.teacher()], AttendanceController.scanStudentQR);
 Route.get("/api/attendance/subjects/:class_id", [Auth, RoleAuth.teacher()], AttendanceController.getAvailableSubjects);
+Route.get("/api/attendance/today-schedules", [Auth, RoleAuth.teacher()], AttendanceController.getTodaySchedules);
 Route.post("/api/attendance/scan", [Auth, RoleAuth.student()], AttendanceController.processScan);
 Route.get("/api/attendance/class/:class_id", [Auth, RoleAuth.teacherOrAdmin()], AttendanceController.getClassAttendance);
 Route.get("/api/attendance/student/:student_id", [Auth], AttendanceController.getStudentAttendance);

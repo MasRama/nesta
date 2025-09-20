@@ -12,9 +12,13 @@
    
    let currentSection = 'overview';
    let showQRScanner = false;
+   let showScheduleSelector = false;
    let scanResult = null;
    let isScanning = false;
    let selectedSubject = null;
+   let selectedSchedule = null;
+   let todaySchedules = [];
+   let isLoadingSchedules = false;
    let scanError = null;
    let qrScanner = null;
    
@@ -34,8 +38,78 @@
       return new Date(dateString).toLocaleString('id-ID');
    }
    
-   function openQRScanner(subject = null) {
-      selectedSubject = subject;
+   async function openQRScanner(subject = null) {
+      // If subject is provided (from subject card), use it directly
+      if (subject) {
+         selectedSubject = subject;
+         showQRScanner = true;
+         scanError = null;
+         scanResult = null;
+
+         // Initialize QR scanner after modal is shown
+         setTimeout(() => {
+            initQRScanner();
+         }, 100);
+         return;
+      }
+
+      // If no subject provided (from Ringkasan tab), always show schedule selector
+      await checkTodaySchedulesForSelector();
+   }
+
+   async function checkTodaySchedulesForSelector() {
+      isLoadingSchedules = true;
+      scanError = null;
+
+      try {
+         const response = await fetch('/api/attendance/today-schedules', {
+            method: 'GET',
+            headers: {
+               'Content-Type': 'application/json',
+            }
+         });
+
+         const data = await response.json();
+
+         if (response.ok) {
+            if (!data.hasSchedules) {
+               // No schedules today - still show modal with empty state
+               todaySchedules = [];
+            } else {
+               todaySchedules = data.schedules;
+            }
+
+            // Always show schedule selector for Ringkasan tab (even for no schedules)
+            showScheduleSelector = true;
+         } else {
+            scanError = data.error || 'Gagal mengambil jadwal hari ini';
+            // Still show modal even on API error
+            todaySchedules = [];
+            showScheduleSelector = true;
+         }
+      } catch (error) {
+         console.error('Error fetching today schedules:', error);
+         scanError = 'Terjadi kesalahan saat mengambil jadwal';
+         // Still show modal even on network error
+         todaySchedules = [];
+         showScheduleSelector = true;
+      } finally {
+         isLoadingSchedules = false;
+      }
+   }
+
+
+
+   function selectSchedule(schedule) {
+      selectedSubject = {
+         id: schedule.subject_id,
+         nama: schedule.subject_name,
+         kode: schedule.subject_code,
+         deskripsi: schedule.subject_description
+      };
+      selectedSchedule = schedule;
+
+      showScheduleSelector = false;
       showQRScanner = true;
       scanError = null;
       scanResult = null;
@@ -44,6 +118,13 @@
       setTimeout(() => {
          initQRScanner();
       }, 100);
+   }
+
+   function closeScheduleSelector() {
+      showScheduleSelector = false;
+      todaySchedules = [];
+      selectedSchedule = null;
+      scanError = null; // Reset error state when closing modal
    }
 
    function closeQRScanner() {
@@ -59,6 +140,8 @@
       isScanning = false;
       scanError = null;
       scanResult = null;
+      selectedSchedule = null;
+      // Note: Don't reset selectedSubject here as it might be used from subject card
    }
 
    function initQRScanner() {
@@ -103,15 +186,23 @@
       }
 
       try {
+         const requestBody = {
+            qr_data: qrData,
+            subject_id: selectedSubject.id
+         };
+
+         // Add schedule information if available
+         if (selectedSchedule) {
+            requestBody.schedule_id = selectedSchedule.schedule_id;
+            requestBody.class_id = selectedSchedule.class_id;
+         }
+
          const response = await fetch('/api/attendance/scan-student', {
             method: 'POST',
             headers: {
                'Content-Type': 'application/json',
             },
-            body: JSON.stringify({
-               qr_data: qrData,
-               subject_id: selectedSubject.id
-            })
+            body: JSON.stringify(requestBody)
          });
 
          const data = await response.json();
@@ -479,16 +570,22 @@
                   </div>
                   <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                      <button
-                        class="group relative bg-gradient-to-br from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-semibold py-6 px-6 rounded-2xl shadow-lg hover:shadow-xl transform hover:-translate-y-1 transition-all duration-300 overflow-hidden"
+                        class="group relative bg-gradient-to-br from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-semibold py-6 px-6 rounded-2xl shadow-lg hover:shadow-xl transform hover:-translate-y-1 transition-all duration-300 overflow-hidden disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
                         on:click={openQRScanner}
+                        disabled={isLoadingSchedules}
                      >
                         <div class="absolute inset-0 bg-gradient-to-r from-white/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
                         <div class="relative flex flex-col items-center justify-center space-y-3">
-                           <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/>
-                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/>
-                           </svg>
-                           <span class="text-sm font-medium">Scan QR Murid</span>
+                           {#if isLoadingSchedules}
+                              <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-white"></div>
+                              <span class="text-sm font-medium">Memuat...</span>
+                           {:else}
+                              <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/>
+                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/>
+                              </svg>
+                              <span class="text-sm font-medium">Scan QR Murid</span>
+                           {/if}
                         </div>
                      </button>
                      <button 
@@ -528,6 +625,18 @@
                         </div>
                      </button>
                   </div>
+
+                  <!-- Error Display for Scan QR -->
+                  {#if scanError && !showQRScanner && !showScheduleSelector}
+                     <div class="mt-4 bg-red-50 border border-red-200 rounded-lg p-3">
+                        <div class="flex items-center">
+                           <svg class="w-5 h-5 text-red-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                           </svg>
+                           <p class="text-sm text-red-600">{scanError}</p>
+                        </div>
+                     </div>
+                  {/if}
                </div>
             </div>
 
@@ -670,12 +779,21 @@
                      </div>
                      <div class="mt-6">
                         {#if currentSchedule.hasActiveSchedule}
-                           <button class="w-full bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white py-3 px-6 rounded-2xl text-sm font-semibold shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 transition-all duration-300" on:click={openQRScanner}>
+                           <button
+                              class="w-full bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white py-3 px-6 rounded-2xl text-sm font-semibold shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
+                              on:click={openQRScanner}
+                              disabled={isLoadingSchedules}
+                           >
                               <span class="flex items-center justify-center space-x-2">
-                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 16h4.01M12 8h4.01M16 4h4.01"></path>
-                                 </svg>
-                                 <span>Scan QR Murid</span>
+                                 {#if isLoadingSchedules}
+                                    <div class="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                                    <span>Memuat...</span>
+                                 {:else}
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 16h4.01M12 8h4.01M16 4h4.01"></path>
+                                    </svg>
+                                    <span>Scan QR Murid</span>
+                                 {/if}
                               </span>
                            </button>
                         {:else}
@@ -726,7 +844,29 @@
                                           {subject.kode}
                                        </span>
                                     </div>
-                                    <h4 class="text-lg font-bold text-gray-900 mb-2 group-hover:text-blue-700 transition-colors">{subject.nama}</h4>
+                                    <h4 class="text-lg font-bold text-gray-900 mb-3 group-hover:text-blue-700 transition-colors">{subject.nama}</h4>
+
+                                    <!-- Jadwal Information -->
+                                    {#if subject.schedules && subject.schedules.length > 0}
+                                       <div class="mb-4 space-y-1">
+                                          {#each subject.schedules as schedule}
+                                             <div class="text-sm text-gray-700">
+                                                <span class="font-medium text-gray-800">Jadwal:</span>
+                                                <span class="text-blue-600 font-medium">{schedule.day}, {schedule.start_time} - {schedule.end_time}</span>
+                                                {#if schedule.kelas}
+                                                   <span class="text-gray-600">({schedule.kelas})</span>
+                                                {/if}
+                                             </div>
+                                          {/each}
+                                       </div>
+                                    {:else}
+                                       <div class="mb-4">
+                                          <div class="text-sm text-gray-600">
+                                             <span class="font-medium">Jadwal:</span> Belum ada jadwal terdaftar
+                                          </div>
+                                       </div>
+                                    {/if}
+
                                     <p class="text-sm text-gray-600 mb-6">{subject.deskripsi || 'Mata pelajaran yang Anda ampu'}</p>
                                     <button
                                        class="w-full bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white py-3 px-4 rounded-xl text-sm font-semibold shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 transition-all duration-300 flex items-center justify-center space-x-2"
@@ -1048,6 +1188,106 @@
    </main>
 </div>
 
+<!-- Schedule Selector Modal -->
+{#if showScheduleSelector}
+   <div class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+      <div class="relative top-10 mx-auto p-5 border w-full max-w-lg shadow-lg rounded-md bg-white">
+         <div class="mt-3">
+            <div class="flex items-center justify-between mb-4">
+               <h3 class="text-lg leading-6 font-medium text-gray-900">Pilih Jadwal Mengajar</h3>
+               <button
+                  class="text-gray-400 hover:text-gray-600"
+                  on:click={closeScheduleSelector}
+                  aria-label="Tutup pemilihan jadwal"
+               >
+                  <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                  </svg>
+               </button>
+            </div>
+
+            <div class="mb-4">
+               {#if scanError}
+                  <!-- Error State -->
+                  <div class="text-center py-8">
+                     <div class="w-16 h-16 mx-auto mb-4 bg-red-100 rounded-full flex items-center justify-center">
+                        <svg class="w-8 h-8 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                     </div>
+                     <p class="text-red-600 text-sm font-medium mb-2">Terjadi Kesalahan</p>
+                     <p class="text-gray-500 text-sm">{scanError}</p>
+                  </div>
+               {:else if todaySchedules.length > 0}
+                  <!-- Schedule List -->
+                  <p class="text-sm text-gray-600 mb-4">
+                     Pilih jadwal mengajar yang sesuai untuk melakukan absensi:
+                  </p>
+
+                  <div class="space-y-3">
+                     {#each todaySchedules as schedule}
+                        <button
+                           class="w-full text-left p-4 border border-gray-200 rounded-lg hover:border-blue-300 hover:bg-blue-50 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                           on:click={() => selectSchedule(schedule)}
+                        >
+                           <div class="flex items-center justify-between">
+                              <div class="flex-1">
+                                 <div class="font-medium text-gray-900 mb-1">
+                                    {schedule.subject_name}
+                                 </div>
+                                 <div class="text-sm text-gray-600">
+                                    <span class="inline-flex items-center">
+                                       <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                       </svg>
+                                       {schedule.start_time} - {schedule.end_time}
+                                    </span>
+                                    <span class="ml-3 inline-flex items-center">
+                                       <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path>
+                                       </svg>
+                                       Kelas {schedule.class_name}
+                                    </span>
+                                 </div>
+                                 <div class="text-xs text-gray-500 mt-1">
+                                    Kode: {schedule.subject_code}
+                                 </div>
+                              </div>
+                              <div class="ml-4">
+                                 <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                                 </svg>
+                              </div>
+                           </div>
+                        </button>
+                     {/each}
+                  </div>
+               {:else}
+                  <!-- Empty State -->
+                  <div class="text-center py-8">
+                     <div class="w-16 h-16 mx-auto mb-4 bg-gray-100 rounded-full flex items-center justify-center">
+                        <svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                     </div>
+                     <p class="text-gray-500 text-sm">Tidak ada jadwal mengajar hari ini</p>
+                  </div>
+               {/if}
+            </div>
+
+            <div class="flex justify-center">
+               <button
+                  class="px-6 py-2 bg-gray-300 text-gray-700 text-base font-medium rounded-md shadow-sm hover:bg-gray-400 transition-colors"
+                  on:click={closeScheduleSelector}
+               >
+                  Batal
+               </button>
+            </div>
+         </div>
+      </div>
+   </div>
+{/if}
+
 <!-- QR Scanner Modal -->
 {#if showQRScanner}
    <div class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
@@ -1071,6 +1311,15 @@
                   <div class="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
                      <p class="text-sm font-medium text-blue-800">Mata Pelajaran: {selectedSubject.nama}</p>
                      <p class="text-xs text-blue-600">Kode: {selectedSubject.kode}</p>
+                     {#if selectedSchedule}
+                        <div class="mt-2 pt-2 border-t border-blue-200">
+                           <p class="text-xs text-blue-700">
+                              <span class="font-medium">Jadwal:</span>
+                              {selectedSchedule.day}, {selectedSchedule.start_time} - {selectedSchedule.end_time}
+                              <span class="ml-2">({selectedSchedule.class_name})</span>
+                           </p>
+                        </div>
+                     {/if}
                   </div>
                {/if}
                <p class="text-sm text-gray-600 mb-4">

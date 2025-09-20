@@ -113,20 +113,20 @@ class AttendanceService {
    async validateTeacherSubject(teacherId: string, subjectId: string, studentClass: string): Promise<{ valid: boolean, message: string, schedule?: any }> {
       try {
          // Check if teacher teaches this subject and has schedule for this class
-         const schedule = await DB.from("subject_schedules as ss")
-            .join("subjects as s", "ss.subject_id", "s.id")
-            .join("teacher_subjects as ts", "s.id", "ts.subject_id")
-            .join("teachers as t", "ts.teacher_id", "t.id")
-            .where("t.user_id", teacherId)
+         const schedule = await DB.from("subject_classes as sc")
+            .join("subjects as s", "sc.subject_id", "s.id")
+            .join("classes as c", "sc.class_id", "c.id")
+            .where("sc.teacher_id", teacherId)
             .where("s.id", subjectId)
-            .where("ss.kelas", studentClass)
-            .where("ss.is_active", true)
-            .where("ts.is_active", true)
+            .where("c.name", studentClass)
+            .where("sc.is_active", true)
+            .where("s.is_active", true)
             .select(
-               "ss.*",
+               "sc.*",
                "s.id as subject_id",
                "s.nama as subject_name",
-               "s.kode as subject_code"
+               "s.kode as subject_code",
+               "c.name as class_name"
             )
             .first();
 
@@ -156,7 +156,7 @@ class AttendanceService {
     * Scan student QR code for attendance (Teacher scans student QR)
     * QR format expected: NSID_Nama Lengkap (e.g., NSID001_Ahmad Budi Santoso)
     */
-   async scanStudentQR(qrData: string, teacherId: string, subjectId: string): Promise<{ success: boolean, message: string, attendance?: AttendanceRecord, student?: any }> {
+   async scanStudentQR(qrData: string, teacherId: string, subjectId: string, scheduleId?: string, classId?: string): Promise<{ success: boolean, message: string, attendance?: AttendanceRecord, student?: any }> {
       try {
          // Parse QR data format: NSID_Nama Lengkap
          const qrParts = qrData.split('_');
@@ -185,7 +185,15 @@ class AttendanceService {
          }
 
          // Validate teacher-subject relationship
-         const scheduleValidation = await this.validateTeacherSubject(teacherId, subjectId, student.kelas);
+         let scheduleValidation;
+         if (scheduleId && classId) {
+            // Use specific schedule validation if schedule info is provided
+            scheduleValidation = await this.validateSpecificTeacherSchedule(teacherId, subjectId, scheduleId, classId);
+         } else {
+            // Fallback to general validation
+            scheduleValidation = await this.validateTeacherSubject(teacherId, subjectId, student.kelas);
+         }
+
          if (!scheduleValidation.valid) {
             return {
                success: false,
@@ -429,6 +437,53 @@ class AttendanceService {
          acc[stat.status] = stat.count;
          return acc;
       }, {});
+   }
+
+   /**
+    * Validate teacher schedule with specific schedule ID and class ID
+    */
+   async validateSpecificTeacherSchedule(teacherId: string, subjectId: string, scheduleId: string, classId: string): Promise<{ valid: boolean, message: string }> {
+      try {
+         // Check if the teacher is assigned to this specific schedule
+         const schedule = await DB.from("subject_classes")
+            .where("id", scheduleId)
+            .where("teacher_id", teacherId)
+            .where("subject_id", subjectId)
+            .where("class_id", classId)
+            .where("is_active", true)
+            .first();
+
+         if (!schedule) {
+            return {
+               valid: false,
+               message: "Anda tidak memiliki akses untuk mengajar mata pelajaran ini pada jadwal yang dipilih"
+            };
+         }
+
+         // Check if it's the right day and time
+         const now = new Date();
+         const dayNames = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+         const currentDay = dayNames[now.getDay()];
+
+         if (schedule.day !== currentDay) {
+            return {
+               valid: false,
+               message: `Jadwal ini untuk hari ${schedule.day}, bukan hari ${currentDay}`
+            };
+         }
+
+         return {
+            valid: true,
+            message: "Validasi berhasil"
+         };
+
+      } catch (error) {
+         console.error("Error validating teacher schedule:", error);
+         return {
+            valid: false,
+            message: "Terjadi kesalahan saat validasi jadwal"
+         };
+      }
    }
 
    /**

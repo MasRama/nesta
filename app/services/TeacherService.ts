@@ -421,22 +421,22 @@ class TeacherService {
             const currentTime = now.toTimeString().slice(0, 5); // HH:MM format
 
             // Get current active schedule for teacher
-            const schedule = await DB.from("subject_schedules as ss")
-                .join("subjects as s", "ss.subject_id", "s.id")
-                .join("teacher_subjects as ts", "s.id", "ts.subject_id")
-                .join("teachers as t", "ts.teacher_id", "t.id")
-                .where("t.user_id", teacherUserId)
-                .where("ss.day", currentDay)
-                .where("ss.start_time", "<=", currentTime)
-                .where("ss.end_time", ">=", currentTime)
-                .where("ss.is_active", true)
-                .where("ts.is_active", true)
+            const schedule = await DB.from("subject_classes as sc")
+                .join("subjects as s", "sc.subject_id", "s.id")
+                .join("classes as c", "sc.class_id", "c.id")
+                .where("sc.teacher_id", teacherUserId)
+                .where("sc.day", currentDay)
+                .where("sc.start_time", "<=", currentTime)
+                .where("sc.end_time", ">=", currentTime)
+                .where("sc.is_active", true)
+                .where("s.is_active", true)
                 .select(
-                    "ss.*",
+                    "sc.*",
                     "s.id as subject_id",
                     "s.nama as subject_name",
                     "s.kode as subject_code",
-                    "s.deskripsi as subject_description"
+                    "s.deskripsi as subject_description",
+                    "c.name as class_name"
                 )
                 .first();
 
@@ -467,25 +467,59 @@ class TeacherService {
     }
 
     /**
-     * Get all subjects taught by teacher
+     * Get all subjects taught by teacher with schedule information
      */
     async getTeacherSubjects(teacherUserId: string): Promise<any[]> {
         try {
-            const subjects = await DB.from("teacher_subjects as ts")
-                .join("subjects as s", "ts.subject_id", "s.id")
-                .join("teachers as t", "ts.teacher_id", "t.id")
-                .where("t.user_id", teacherUserId)
-                .where("ts.is_active", true)
+            // Get subjects with their schedule information from subject_classes
+            const subjectsWithSchedule = await DB.from("subject_classes as sc")
+                .join("subjects as s", "sc.subject_id", "s.id")
+                .join("classes as c", "sc.class_id", "c.id")
+                .where("sc.teacher_id", teacherUserId)
+                .where("sc.is_active", true)
                 .where("s.is_active", true)
                 .select(
                     "s.id",
                     "s.nama",
                     "s.kode",
-                    "s.deskripsi"
+                    "s.deskripsi",
+                    "sc.day",
+                    "sc.start_time",
+                    "sc.end_time",
+                    "c.name as kelas"
                 )
-                .orderBy("s.nama");
+                .orderBy("s.nama")
+                .orderBy("sc.day")
+                .orderBy("sc.start_time");
 
-            return subjects;
+            // Group schedules by subject
+            const subjectsMap = new Map();
+
+            subjectsWithSchedule.forEach(item => {
+                const subjectId = item.id;
+
+                if (!subjectsMap.has(subjectId)) {
+                    subjectsMap.set(subjectId, {
+                        id: item.id,
+                        nama: item.nama,
+                        kode: item.kode,
+                        deskripsi: item.deskripsi,
+                        schedules: []
+                    });
+                }
+
+                // Add schedule if it exists
+                if (item.day && item.start_time && item.end_time) {
+                    subjectsMap.get(subjectId).schedules.push({
+                        day: item.day,
+                        start_time: item.start_time,
+                        end_time: item.end_time,
+                        kelas: item.kelas
+                    });
+                }
+            });
+
+            return Array.from(subjectsMap.values());
         } catch (error) {
             console.error("Error getting teacher subjects:", error);
             return [];
@@ -497,24 +531,23 @@ class TeacherService {
      */
     async getTeacherWeeklySchedule(teacherUserId: string): Promise<any[]> {
         try {
-            const schedule = await DB.from("subject_schedules as ss")
-                .join("subjects as s", "ss.subject_id", "s.id")
-                .join("teacher_subjects as ts", "s.id", "ts.subject_id")
-                .join("teachers as t", "ts.teacher_id", "t.id")
-                .where("t.user_id", teacherUserId)
-                .where("ss.is_active", true)
-                .where("ts.is_active", true)
+            const schedule = await DB.from("subject_classes as sc")
+                .join("subjects as s", "sc.subject_id", "s.id")
+                .join("classes as c", "sc.class_id", "c.id")
+                .where("sc.teacher_id", teacherUserId)
+                .where("sc.is_active", true)
+                .where("s.is_active", true)
                 .select(
-                    "ss.day",
-                    "ss.start_time",
-                    "ss.end_time",
-                    "ss.kelas",
+                    "sc.day",
+                    "sc.start_time",
+                    "sc.end_time",
+                    "c.name as kelas",
                     "s.id as subject_id",
                     "s.nama as subject_name",
                     "s.kode as subject_code"
                 )
-                .orderBy("ss.day")
-                .orderBy("ss.start_time");
+                .orderBy("sc.day")
+                .orderBy("sc.start_time");
 
             // Group by day for easier display
             const groupedSchedule = schedule.reduce((acc, item) => {
@@ -537,6 +570,80 @@ class TeacherService {
         } catch (error) {
             console.error("Error getting teacher weekly schedule:", error);
             return [];
+        }
+    }
+
+    /**
+     * Get teacher's schedules for today with detailed information
+     */
+    async getTodaySchedules(teacherUserId: string): Promise<{
+        hasSchedules: boolean;
+        schedules: any[];
+        message: string;
+    }> {
+        try {
+            const now = new Date();
+            const dayNames = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+            const currentDay = dayNames[now.getDay()];
+
+            // Get today's schedules for teacher
+            const schedules = await DB.from("subject_classes as sc")
+                .join("subjects as s", "sc.subject_id", "s.id")
+                .join("classes as c", "sc.class_id", "c.id")
+                .where("sc.teacher_id", teacherUserId)
+                .where("sc.day", currentDay)
+                .where("sc.is_active", true)
+                .where("s.is_active", true)
+                .select(
+                    "sc.id as schedule_id",
+                    "s.id as subject_id",
+                    "s.nama as subject_name",
+                    "s.kode as subject_code",
+                    "s.deskripsi as subject_description",
+                    "sc.day",
+                    "sc.start_time",
+                    "sc.end_time",
+                    "c.id as class_id",
+                    "c.name as class_name"
+                )
+                .orderBy("sc.start_time");
+
+            if (schedules.length === 0) {
+                return {
+                    hasSchedules: false,
+                    schedules: [],
+                    message: `Anda tidak memiliki jadwal mengajar hari ini (${currentDay})`
+                };
+            }
+
+            // Format schedules for display
+            const formattedSchedules = schedules.map(schedule => ({
+                schedule_id: schedule.schedule_id,
+                subject_id: schedule.subject_id,
+                subject_name: schedule.subject_name,
+                subject_code: schedule.subject_code,
+                subject_description: schedule.subject_description,
+                day: schedule.day,
+                start_time: schedule.start_time,
+                end_time: schedule.end_time,
+                class_id: schedule.class_id,
+                class_name: schedule.class_name,
+                display_text: `${schedule.subject_name} - ${schedule.start_time}-${schedule.end_time} (${schedule.class_name})`
+            }));
+
+            return {
+                hasSchedules: true,
+                schedules: formattedSchedules,
+                message: `Ditemukan ${schedules.length} jadwal mengajar hari ini`
+            };
+
+        } catch (error) {
+            console.error("Error getting today schedules:", error);
+            return {
+                hasSchedules: false,
+                schedules: [],
+                message: "Terjadi kesalahan saat mengambil jadwal hari ini"
+            };
         }
     }
 }

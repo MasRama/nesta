@@ -9,7 +9,7 @@ class AttendanceController {
     */
    public async scanStudentQR(request: Request, response: Response) {
       try {
-         const { qr_data, subject_id } = await request.json();
+         const { qr_data, subject_id, schedule_id, class_id } = await request.json();
 
          if (!qr_data) {
             return response.status(400).json({ error: "QR data is required" });
@@ -24,7 +24,13 @@ class AttendanceController {
             return response.status(403).json({ error: "Only teachers can scan student QR codes" });
          }
 
-         const result = await AttendanceService.scanStudentQR(qr_data, request.user.id, subject_id);
+         const result = await AttendanceService.scanStudentQR(
+            qr_data,
+            request.user.id,
+            subject_id,
+            schedule_id,
+            class_id
+         );
 
          if (result.success) {
             return response.json({
@@ -181,7 +187,7 @@ class AttendanceController {
          }
 
          const stats = await AttendanceService.getStudentAttendanceStats(
-            student_id, 
+            student_id,
             class_id as string
          );
 
@@ -189,6 +195,26 @@ class AttendanceController {
       } catch (error) {
          console.error("Error getting attendance stats:", error);
          return response.status(500).json({ error: "Failed to get attendance statistics" });
+      }
+   }
+
+   /**
+    * Get teacher's schedules for today (Teacher only)
+    */
+   public async getTodaySchedules(request: Request, response: Response) {
+      try {
+         // Ensure user is a teacher
+         if (request.user.role !== 'teacher') {
+            return response.status(403).json({ error: "Only teachers can access schedules" });
+         }
+
+         const TeacherService = (await import("../services/TeacherService")).default;
+         const result = await TeacherService.getTodaySchedules(request.user.id);
+
+         return response.json(result);
+      } catch (error) {
+         console.error("Error getting today schedules:", error);
+         return response.status(500).json({ error: "Failed to get today's schedules" });
       }
    }
 
