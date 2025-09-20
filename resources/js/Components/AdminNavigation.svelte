@@ -52,6 +52,15 @@
          }
       },
       {
+         id: 'classes',
+         label: 'Manajemen Kelas',
+         icon: 'M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4',
+         colors: {
+            from: 'from-orange-600',
+            to: 'to-red-600'
+         }
+      },
+      {
          id: 'subjects',
          label: 'Manajemen Mapel',
          icon: 'M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253',
@@ -71,6 +80,8 @@
          router.visit('/admin/teachers');
       } else if (section === 'parents') {
          router.visit('/admin/parents');
+      } else if (section === 'classes') {
+         router.visit('/admin/classes');
       } else if (section === 'subjects') {
          router.visit('/admin/subjects');
       }
@@ -82,18 +93,8 @@
    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
       <div class="flex space-x-2 py-4">
          {#each navItems as item}
-            <button 
-               class="px-6 py-3 rounded-xl font-medium text-sm nav-btn-enhanced"
-               class:bg-gradient-to-r={currentSection === item.id}
-               class:from-blue-600={currentSection === item.id}
-               class:to-indigo-600={currentSection === item.id}
-               class:text-white={currentSection === item.id}
-               class:shadow-lg={currentSection === item.id}
-               class:bg-white={currentSection !== item.id}
-               class:text-gray-800={currentSection !== item.id}
-               class:hover:bg-gray-50={currentSection !== item.id}
-               class:border={currentSection !== item.id}
-               class:border-gray-200={currentSection !== item.id}
+            <button
+               class={`px-6 py-3 rounded-xl font-medium text-sm nav-btn-enhanced ${currentSection === item.id ? `bg-gradient-to-r ${item.colors.from} ${item.colors.to} text-white shadow-lg` : 'bg-white text-gray-800 hover:bg-gray-50 border border-gray-200'}`}
                on:click={() => navigateToSection(item.id)}
             >
                <div class="flex items-center space-x-2">

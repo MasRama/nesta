@@ -60,8 +60,8 @@
    async function loadClasses() {
       isLoading = true;
       try {
-         // TODO: Implement class management API
-         console.log('Loading classes...');
+         // Navigate to classes management page
+         router.visit('/admin/classes');
       } catch (error) {
          console.error('Error loading classes:', error);
       } finally {
