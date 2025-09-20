@@ -1,7 +1,7 @@
 import DB from "../services/DB";
 import Authenticate from "../services/Authenticate";
-import { Response, Request } from "../../type"; 
-import { randomUUID } from "crypto";
+import { Response, Request } from "../../type";
+import { randomUUID, pbkdf2Sync } from "crypto";
 import dayjs from "dayjs";
 import * as fs from "fs";
 import * as path from "path";
@@ -17,6 +17,7 @@ class SchoolAuthController {
 
       let user;
 
+      // First, try to find user in users table
       if (email && email.includes("@")) {
          user = await DB.from("users").where("email", email).first();
       } else if (phone) {
@@ -30,14 +31,107 @@ class SchoolAuthController {
             return this.processRoleBasedAuth(user, request, response);
          } else {
             return response
-               .cookie("error", "Password salah", 3000) 
+               .cookie("error", "Password salah", 3000)
                .redirect("/login");
          }
-      } else {
-         return response 
-            .cookie("error", "Email/No.HP tidak terdaftar", 3000)
-            .redirect("/login");
       }
+
+      // If not found in users table, try teachers table for backward compatibility
+      if (email && email.includes("@")) {
+         const teacher = await DB.from("teachers")
+            .where("email", email)
+            .where("is_active", true)
+            .first();
+
+         if (teacher) {
+            const password_match = this.compareTeacherPassword(password, teacher.password);
+
+            if (password_match) {
+               // Create or get corresponding user account
+               const userAccount = await this.getOrCreateUserForTeacher(teacher);
+               return this.processRoleBasedAuth(userAccount, request, response);
+            } else {
+               return response
+                  .cookie("error", "Password salah", 3000)
+                  .redirect("/login");
+            }
+         }
+      }
+
+      return response
+         .cookie("error", "Email/No.HP tidak terdaftar", 3000)
+         .redirect("/login");
+   }
+
+   /**
+    * Compare password with teacher's hashed password
+    * Teachers use different hashing method than users
+    */
+   private compareTeacherPassword(password: string, hashedPassword: string): boolean {
+      const salt = 'netsa_teacher_salt';
+      const hash = pbkdf2Sync(password, salt, 10000, 64, 'sha512').toString('hex');
+      return hash === hashedPassword;
+   }
+
+   /**
+    * Get or create user account for teacher
+    * This ensures teachers can login through the unified system
+    */
+   private async getOrCreateUserForTeacher(teacher: any) {
+      // Check if teacher already has a linked user account
+      if (teacher.user_id) {
+         const existingUser = await DB.from("users").where("id", teacher.user_id).first();
+         if (existingUser) {
+            return existingUser;
+         }
+      }
+
+      // Check if user with this email already exists
+      const existingUser = await DB.from("users").where("email", teacher.email).first();
+      if (existingUser && existingUser.role === 'teacher') {
+         // Link existing user to teacher
+         await DB.from("teachers")
+            .where("id", teacher.id)
+            .update({
+               user_id: existingUser.id,
+               updated_at: Date.now()
+            });
+
+         return existingUser;
+      }
+
+      // Create new user account for teacher
+      const userId = randomUUID();
+      const hashedPassword = await Authenticate.hash('guru123'); // Default password
+
+      const userData = {
+         id: userId,
+         name: teacher.nama,
+         email: teacher.email,
+         phone: teacher.phone || null,
+         password: hashedPassword,
+         role: 'teacher',
+         teacher_id: teacher.id,
+         is_verified: true,
+         is_admin: false,
+         created_at: dayjs().valueOf(),
+         updated_at: dayjs().valueOf()
+      };
+
+      await DB.transaction(async (trx) => {
+         // Insert new user
+         await trx.from("users").insert(userData);
+
+         // Update teacher with user_id
+         await trx.from("teachers")
+            .where("id", teacher.id)
+            .update({
+               user_id: userId,
+               updated_at: Date.now()
+            });
+      });
+
+      return userData;
    }
 
    /**

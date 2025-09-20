@@ -1,5 +1,7 @@
 import DB from "./DB";
 import { randomUUID, createHash, pbkdf2Sync } from "crypto";
+import Authenticate from "./Authenticate";
+import dayjs from "dayjs";
 
 interface TeacherData {
     nip: string;
@@ -84,22 +86,40 @@ class TeacherService {
     
     /**
      * Create new teacher with transaction and duplicate prevention
+     * Also creates corresponding user account for login
      */
     async createTeacher(data: TeacherData) {
-        const id = randomUUID();
-        const hashedPassword = this.hashPassword(data.password);
+        const teacherId = randomUUID();
+        const userId = randomUUID();
+        const hashedPasswordForTeacher = this.hashPassword(data.password);
+        const hashedPasswordForUser = await Authenticate.hash(data.password);
         const now = Date.now();
 
         const teacherData = {
-            id,
+            id: teacherId,
             nip: data.nip,
             nama: data.nama,
             email: data.email,
-            password: hashedPassword,
+            password: hashedPasswordForTeacher,
             phone: data.phone || null,
+            user_id: userId, // Link to user account
             is_active: true,
             created_at: now,
             updated_at: now
+        };
+
+        const userData = {
+            id: userId,
+            name: data.nama,
+            email: data.email,
+            phone: data.phone || null,
+            password: hashedPasswordForUser,
+            role: 'teacher',
+            teacher_id: teacherId,
+            is_verified: true,
+            is_admin: false,
+            created_at: dayjs().valueOf(),
+            updated_at: dayjs().valueOf()
         };
 
         // Use transaction to ensure atomicity
@@ -124,6 +144,18 @@ class TeacherService {
                 const { password, ...teacherWithoutPassword } = existingTeacherByEmail;
                 return teacherWithoutPassword;
             }
+
+            // Check if user with this email already exists
+            const existingUser = await trx.from('users')
+                .where('email', data.email)
+                .first();
+
+            if (existingUser) {
+                throw new Error('Email sudah digunakan oleh user lain');
+            }
+
+            // Insert new user first
+            await trx.from('users').insert(userData);
 
             // Insert new teacher
             await trx.from('teachers').insert(teacherData);
