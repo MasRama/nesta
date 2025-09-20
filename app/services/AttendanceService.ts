@@ -108,62 +108,191 @@ class AttendanceService {
    }
 
    /**
-    * Generate QR code for attendance session with schedule validation
+    * Validate teacher-subject relationship for attendance
     */
-   async generateQRCode(classId: string, teacherId: string, subjectId?: string, durationMinutes: number = 30): Promise<{ success: boolean, session?: AttendanceSession, qrCodeDataURL?: string, message: string }> {
+   async validateTeacherSubject(teacherId: string, subjectId: string, studentClass: string): Promise<{ valid: boolean, message: string, schedule?: any }> {
       try {
-         // Validate teacher schedule
-         const validation = await this.validateTeacherSchedule(teacherId, classId, subjectId);
-         if (!validation.valid) {
+         // Check if teacher teaches this subject and has schedule for this class
+         const schedule = await DB.from("subject_schedules as ss")
+            .join("subjects as s", "ss.subject_id", "s.id")
+            .join("teacher_subjects as ts", "s.id", "ts.subject_id")
+            .join("teachers as t", "ts.teacher_id", "t.id")
+            .where("t.user_id", teacherId)
+            .where("s.id", subjectId)
+            .where("ss.kelas", studentClass)
+            .where("ss.is_active", true)
+            .where("ts.is_active", true)
+            .select(
+               "ss.*",
+               "s.id as subject_id",
+               "s.nama as subject_name",
+               "s.kode as subject_code"
+            )
+            .first();
+
+         if (!schedule) {
             return {
-               success: false,
-               message: validation.message
+               valid: false,
+               message: `Anda tidak mengampu mata pelajaran ini untuk kelas ${studentClass} atau jadwal tidak aktif.`
             };
          }
 
-         const token = randomUUID();
-         const now = new Date();
-         const expiresAt = new Date(now.getTime() + durationMinutes * 60 * 1000);
+         return {
+            valid: true,
+            message: "Validasi berhasil",
+            schedule
+         };
 
-         const session = {
+      } catch (error) {
+         console.error("Error validating teacher-subject relationship:", error);
+         return {
+            valid: false,
+            message: "Terjadi kesalahan saat memvalidasi mata pelajaran"
+         };
+      }
+   }
+
+   /**
+    * Scan student QR code for attendance (Teacher scans student QR)
+    * QR format expected: NSID_Nama Lengkap (e.g., NSID001_Ahmad Budi Santoso)
+    */
+   async scanStudentQR(qrData: string, teacherId: string, subjectId: string): Promise<{ success: boolean, message: string, attendance?: AttendanceRecord, student?: any }> {
+      try {
+         // Parse QR data format: NSID_Nama Lengkap
+         const qrParts = qrData.split('_');
+         if (qrParts.length < 2) {
+            return {
+               success: false,
+               message: "Format QR code tidak valid. Format yang benar: NSID_Nama Lengkap"
+            };
+         }
+
+         const nsid = qrParts[0].trim();
+         const namaLengkap = qrParts.slice(1).join('_').trim(); // Handle names with underscores
+
+         // Validate student exists in database
+         const student = await DB.from("students")
+            .where("nipd", nsid)
+            .where("nama", namaLengkap)
+            .where("is_active", true)
+            .first();
+
+         if (!student) {
+            return {
+               success: false,
+               message: `Siswa dengan NSID ${nsid} dan nama ${namaLengkap} tidak ditemukan atau tidak aktif`
+            };
+         }
+
+         // Validate teacher-subject relationship
+         const scheduleValidation = await this.validateTeacherSubject(teacherId, subjectId, student.kelas);
+         if (!scheduleValidation.valid) {
+            return {
+               success: false,
+               message: scheduleValidation.message
+            };
+         }
+
+         // Check if student already has attendance today for this subject
+         const today = dayjs().format('YYYY-MM-DD');
+         const existingAttendance = await DB.from("attendance_records")
+            .join("attendance_sessions", "attendance_records.attendance_session_id", "attendance_sessions.id")
+            .where("attendance_records.student_id", student.id)
+            .where("attendance_sessions.attendance_date", today)
+            .where("attendance_sessions.subject_id", subjectId)
+            .first();
+
+         if (existingAttendance) {
+            return {
+               success: false,
+               message: `${student.nama} sudah melakukan absensi untuk mata pelajaran ini hari ini`
+            };
+         }
+
+         // Get or create class_id for the student's class
+         let classRecord = await DB.from("classes")
+            .where("name", student.kelas)
+            .first();
+
+         if (!classRecord) {
+            // Create class record if it doesn't exist
+            const gradeLevel = student.kelas.match(/\d+/)?.[0] || "0";
+            const academicYear = new Date().getFullYear() + "/" + (new Date().getFullYear() + 1);
+
+            classRecord = {
+               id: randomUUID(),
+               name: student.kelas,
+               grade_level: gradeLevel,
+               academic_year: academicYear,
+               description: `Kelas ${student.kelas}`,
+               max_students: 30,
+               teacher_id: null,
+               schedule: null,
+               created_at: dayjs().valueOf(),
+               updated_at: dayjs().valueOf()
+            };
+
+            await DB.table("classes").insert(classRecord);
+         }
+
+         // Create or get attendance session for today
+         let session = await DB.from("attendance_sessions")
+            .where("teacher_id", teacherId)
+            .where("attendance_date", today)
+            .where("subject_id", subjectId)
+            .where("class_id", classRecord.id)
+            .where("is_active", true)
+            .first();
+
+         if (!session) {
+            // Create new attendance session
+            session = {
+               id: randomUUID(),
+               class_id: classRecord.id,
+               teacher_id: teacherId,
+               subject_id: subjectId,
+               attendance_date: today,
+               qr_token: randomUUID(), // Not used in new flow but required by schema
+               starts_at: new Date(),
+               expires_at: new Date(Date.now() + 8 * 60 * 60 * 1000), // 8 hours from now
+               is_active: true,
+               created_at: dayjs().valueOf(),
+               updated_at: dayjs().valueOf()
+            };
+
+            await DB.table("attendance_sessions").insert(session);
+         }
+
+         // Create attendance record
+         const attendanceRecord = {
             id: randomUUID(),
-            class_id: classId,
-            teacher_id: teacherId,
-            subject_id: subjectId || validation.schedule?.subject_id,
-            attendance_date: dayjs().format('YYYY-MM-DD'),
-            qr_token: token,
-            starts_at: now,
-            expires_at: expiresAt,
-            is_active: true,
+            attendance_session_id: session.id,
+            student_id: student.id,
+            status: 'present' as const,
+            scanned_at: new Date(),
             created_at: dayjs().valueOf(),
             updated_at: dayjs().valueOf()
          };
 
-         await DB.table("attendance_sessions").insert(session);
-
-         // Generate QR code data URL
-         const qrData = JSON.stringify({
-            token,
-            session_id: session.id,
-            class_id: classId,
-            subject_id: session.subject_id,
-            timestamp: now.getTime()
-         });
-
-         const qrCodeDataURL = await QRCode.toDataURL(qrData);
+         await DB.table("attendance_records").insert(attendanceRecord);
 
          return {
             success: true,
-            session,
-            qrCodeDataURL,
-            message: 'QR code berhasil dibuat'
+            message: `Absensi ${student.nama} (${student.nipd}) berhasil dicatat`,
+            attendance: attendanceRecord,
+            student: {
+               id: student.id,
+               nipd: student.nipd,
+               nama: student.nama,
+               kelas: student.kelas
+            }
          };
 
       } catch (error) {
-         console.error('Error generating QR code:', error);
+         console.error("Error scanning student QR:", error);
          return {
             success: false,
-            message: 'Terjadi kesalahan saat membuat QR code'
+            message: "Terjadi kesalahan saat memproses scan QR code murid"
          };
       }
    }

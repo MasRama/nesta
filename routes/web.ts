@@ -77,14 +77,14 @@ Route.get("/dashboard/admin", [Auth, RoleAuth.admin()], SchoolAuthController.get
  * Attendance System Routes
  * Routes for QR code attendance management
  * ------------------------------------------------
- * POST  /api/attendance/generate-qr - Generate QR code for attendance (Teacher)
- * POST  /api/attendance/scan - Process QR code scan (Student)
+ * POST  /api/attendance/scan-student - Scan student QR code for attendance (Teacher)
+ * POST  /api/attendance/scan - Process QR code scan (Student) - DEPRECATED
  * GET   /api/attendance/class/:class_id - Get class attendance records
  * GET   /api/attendance/student/:student_id - Get student attendance history
  * GET   /api/attendance/stats/:student_id - Get attendance statistics
  * POST  /api/attendance/close/:session_id - Close attendance session
  */
-Route.post("/api/attendance/generate-qr", [Auth, RoleAuth.teacher()], AttendanceController.generateQRCode);
+Route.post("/api/attendance/scan-student", [Auth, RoleAuth.teacher()], AttendanceController.scanStudentQR);
 Route.get("/api/attendance/subjects/:class_id", [Auth, RoleAuth.teacher()], AttendanceController.getAvailableSubjects);
 Route.post("/api/attendance/scan", [Auth, RoleAuth.student()], AttendanceController.processScan);
 Route.get("/api/attendance/class/:class_id", [Auth, RoleAuth.teacherOrAdmin()], AttendanceController.getClassAttendance);

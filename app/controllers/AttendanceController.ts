@@ -5,41 +5,39 @@ import DB from "../services/DB";
 
 class AttendanceController {
    /**
-    * Generate QR code for attendance session (Teacher only)
+    * Scan student QR code for attendance (Teacher only)
     */
-   public async generateQRCode(request: Request, response: Response) {
+   public async scanStudentQR(request: Request, response: Response) {
       try {
-         const { class_id, subject_id, duration_minutes = 30 } = await request.json();
+         const { qr_data, subject_id } = await request.json();
 
-         if (!class_id) {
-            return response.status(400).json({ error: "Class ID is required" });
+         if (!qr_data) {
+            return response.status(400).json({ error: "QR data is required" });
          }
 
-         // Check if teacher can access this class
-         const canAccess = await RoleAuth.canAccessClass(request, class_id);
-         if (!canAccess) {
-            return response.status(403).json({ error: "Unauthorized access to class" });
+         if (!subject_id) {
+            return response.status(400).json({ error: "Subject ID is required" });
          }
 
-         const result = await AttendanceService.generateQRCode(
-            class_id,
-            request.user.id,
-            subject_id,
-            duration_minutes
-         );
+         // Ensure user is a teacher
+         if (request.user.role !== 'teacher') {
+            return response.status(403).json({ error: "Only teachers can scan student QR codes" });
+         }
+
+         const result = await AttendanceService.scanStudentQR(qr_data, request.user.id, subject_id);
 
          if (result.success) {
             return response.json({
-               session: result.session,
-               qrCodeDataURL: result.qrCodeDataURL,
-               message: result.message
+               message: result.message,
+               attendance: result.attendance,
+               student: result.student
             });
          } else {
             return response.status(400).json({ error: result.message });
          }
       } catch (error) {
-         console.error("Error generating QR code:", error);
-         return response.status(500).json({ error: "Failed to generate QR code" });
+         console.error("Error scanning student QR:", error);
+         return response.status(500).json({ error: "Failed to scan student QR code" });
       }
    }
 

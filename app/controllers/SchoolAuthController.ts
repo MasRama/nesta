@@ -251,11 +251,14 @@ class SchoolAuthController {
    }
 
    private async getTeacherDashboard(user: any, response: Response) {
-      // Get teacher's classes and subjects based on subject_classes assignments
-      const classes = await TeacherService.getTeacherClassesAndSubjects(user.id);
+      // Get teacher subjects for attendance
+      const teacherSubjects = await TeacherService.getTeacherSubjects(user.id);
 
-      // Get current teaching schedule
-      const currentSchedule = await TeacherService.getCurrentTeachingSchedule(user.id);
+      // Get weekly schedule
+      const weeklySchedule = await TeacherService.getTeacherWeeklySchedule(user.id);
+
+      // Get current active schedule (for overview card)
+      const currentSchedule = await TeacherService.getCurrentActiveSchedule(user.id);
 
       // Get recent journals
       const journals = await DB.from("teacher_journals")
@@ -271,7 +274,8 @@ class SchoolAuthController {
 
       return response.inertia("dashboard/teacher", {
          user,
-         classes,
+         teacherSubjects,
+         weeklySchedule,
          currentSchedule,
          journals,
          exams

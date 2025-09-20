@@ -1,20 +1,22 @@
 <script>
    import { router } from '@inertiajs/svelte';
    import { onMount } from 'svelte';
+   import { Html5QrcodeScanner } from 'html5-qrcode';
    
    export let user;
-   export let classes = [];
+   export let teacherSubjects = [];
+   export let weeklySchedule = [];
+   export let currentSchedule = { hasActiveSchedule: false, message: '', schedule: null };
    export let journals = [];
    export let exams = [];
    
    let currentSection = 'overview';
-   let showQRCode = false;
-   let qrCodeData = null;
-   let selectedClass = null;
-   let showSubjectSelection = false;
-   let availableSubjects = [];
+   let showQRScanner = false;
+   let scanResult = null;
+   let isScanning = false;
    let selectedSubject = null;
-   let pendingClassId = null;
+   let scanError = null;
+   let qrScanner = null;
    
    function navigateToSection(section) {
       currentSection = section;
@@ -32,86 +34,107 @@
       return new Date(dateString).toLocaleString('id-ID');
    }
    
-   async function generateQRCode(classId, subjectId = null) {
-      if (!subjectId) {
-         // First, get available subjects for this class
-         await showSubjectSelectionModal(classId);
+   function openQRScanner(subject = null) {
+      selectedSubject = subject;
+      showQRScanner = true;
+      scanError = null;
+      scanResult = null;
+
+      // Initialize QR scanner after modal is shown
+      setTimeout(() => {
+         initQRScanner();
+      }, 100);
+   }
+
+   function closeQRScanner() {
+      // Stop scanner if running
+      if (qrScanner) {
+         qrScanner.clear().catch(error => {
+            console.error("Failed to clear QR scanner:", error);
+         });
+         qrScanner = null;
+      }
+
+      showQRScanner = false;
+      isScanning = false;
+      scanError = null;
+      scanResult = null;
+   }
+
+   function initQRScanner() {
+      const qrReaderElement = document.getElementById("qr-reader");
+      if (!qrReaderElement) return;
+
+      qrScanner = new Html5QrcodeScanner(
+         "qr-reader",
+         {
+            fps: 10,
+            qrbox: { width: 250, height: 250 },
+            aspectRatio: 1.0
+         },
+         false
+      );
+
+      qrScanner.render(
+         (decodedText, decodedResult) => {
+            // QR code successfully scanned
+            processScannedQR(decodedText);
+
+            // Stop scanning after successful scan
+            qrScanner.clear().catch(error => {
+               console.error("Failed to clear QR scanner:", error);
+            });
+         },
+         (error) => {
+            // QR code scan error - this is normal, just ignore
+            // console.warn(`QR scan error: ${error}`);
+         }
+      );
+   }
+
+   async function processScannedQR(qrData) {
+      isScanning = true;
+      scanError = null;
+
+      if (!selectedSubject) {
+         scanError = 'Pilih mata pelajaran terlebih dahulu';
+         isScanning = false;
          return;
       }
 
       try {
-         const response = await fetch('/api/attendance/generate-qr', {
+         const response = await fetch('/api/attendance/scan-student', {
             method: 'POST',
             headers: {
                'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-               class_id: classId,
-               subject_id: subjectId,
-               duration_minutes: 30
+               qr_data: qrData,
+               subject_id: selectedSubject.id
             })
          });
 
-         if (response.ok) {
-            const data = await response.json();
-            qrCodeData = data;
-            showQRCode = true;
-            selectedClass = classes.find(c => c.id === classId);
-            selectedSubject = availableSubjects.find(s => s.id === subjectId);
-            closeSubjectSelection();
-         } else {
-            const errorData = await response.json();
-            alert(errorData.error || 'Gagal membuat QR code absensi');
-         }
-      } catch (error) {
-         console.error('Error generating QR code:', error);
-         alert('Terjadi kesalahan saat membuat QR code');
-      }
-   }
-
-   async function showSubjectSelectionModal(classId) {
-      try {
-         pendingClassId = classId;
-         const response = await fetch(`/api/attendance/subjects/${classId}`);
+         const data = await response.json();
 
          if (response.ok) {
-            const data = await response.json();
-            availableSubjects = data.subjects;
-
-            if (availableSubjects.length === 0) {
-               alert('Tidak ada mata pelajaran yang tersedia untuk absensi saat ini. Pastikan Anda memiliki jadwal mengajar hari ini.');
-               return;
-            }
-
-            showSubjectSelection = true;
+            scanResult = {
+               success: true,
+               message: data.message,
+               student: data.student,
+               attendance: data.attendance
+            };
          } else {
-            const errorData = await response.json();
-            alert(errorData.error || 'Gagal mengambil data mata pelajaran');
+            scanError = data.error || 'Gagal memproses QR code murid';
          }
       } catch (error) {
-         console.error('Error getting subjects:', error);
-         alert('Terjadi kesalahan saat mengambil data mata pelajaran');
+         console.error('Error processing scanned QR:', error);
+         scanError = 'Terjadi kesalahan saat memproses QR code';
+      } finally {
+         isScanning = false;
       }
    }
 
-   function closeSubjectSelection() {
-      showSubjectSelection = false;
-      availableSubjects = [];
-      selectedSubject = null;
-      pendingClassId = null;
-   }
 
-   function selectSubjectAndGenerate(subjectId) {
-      if (pendingClassId) {
-         generateQRCode(pendingClassId, subjectId);
-      }
-   }
-   
-   function closeQRCode() {
-      showQRCode = false;
-      qrCodeData = null;
-      selectedClass = null;
-   }
    
    function createNewJournal() {
       router.visit('/journal/create');
@@ -339,20 +362,20 @@
             </button>
             <button 
                class="px-6 py-3 rounded-xl font-medium text-sm nav-btn-enhanced"
-               class:bg-gradient-to-r={currentSection === 'classes'}
-               class:from-blue-600={currentSection === 'classes'}
-               class:to-indigo-600={currentSection === 'classes'}
-               class:text-white={currentSection === 'classes'}
-               class:shadow-lg={currentSection === 'classes'}
-               class:text-gray-600={currentSection !== 'classes'}
-               class:hover:bg-blue-50={currentSection !== 'classes'}
-               on:click={() => navigateToSection('classes')}
+               class:bg-gradient-to-r={currentSection === 'schedule'}
+               class:from-blue-600={currentSection === 'schedule'}
+               class:to-indigo-600={currentSection === 'schedule'}
+               class:text-white={currentSection === 'schedule'}
+               class:shadow-lg={currentSection === 'schedule'}
+               class:text-gray-600={currentSection !== 'schedule'}
+               class:hover:bg-blue-50={currentSection !== 'schedule'}
+               on:click={() => navigateToSection('schedule')}
             >
                <div class="flex items-center space-x-2">
                   <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/>
                   </svg>
-                  <span>Kelas</span>
+                  <span>Jadwal</span>
                </div>
             </button>
          </div>
@@ -378,8 +401,8 @@
                                  </svg>
                               </div>
                            </div>
-                           <h3 class="text-white/80 text-sm font-medium mb-1">Kelas Diampu</h3>
-                           <p class="text-3xl font-bold text-white">{classes.length}</p>
+                           <h3 class="text-white/80 text-sm font-medium mb-1">Status Jadwal</h3>
+                           <p class="text-3xl font-bold text-white">{currentSchedule.hasActiveSchedule ? '1' : '0'}</p>
                         </div>
                      </div>
                   </div>
@@ -455,16 +478,17 @@
                      <h3 class="text-2xl font-bold bg-gradient-to-r from-gray-900 to-gray-600 bg-clip-text text-transparent">Aksi Cepat</h3>
                   </div>
                   <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                     <button 
+                     <button
                         class="group relative bg-gradient-to-br from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-semibold py-6 px-6 rounded-2xl shadow-lg hover:shadow-xl transform hover:-translate-y-1 transition-all duration-300 overflow-hidden"
-                        on:click={() => navigateToSection('attendance')}
+                        on:click={openQRScanner}
                      >
                         <div class="absolute inset-0 bg-gradient-to-r from-white/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
                         <div class="relative flex flex-col items-center justify-center space-y-3">
                            <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V6a1 1 0 00-1-1H5a1 1 0 00-1 1v1a1 1 0 001 1z"/>
+                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/>
+                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/>
                            </svg>
-                           <span class="text-sm font-medium">Buat QR Absensi</span>
+                           <span class="text-sm font-medium">Scan QR Murid</span>
                         </div>
                      </button>
                      <button 
@@ -493,14 +517,14 @@
                      </button>
                      <button
                         class="group relative bg-gradient-to-br from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-semibold py-6 px-6 rounded-2xl shadow-lg hover:shadow-xl transform hover:-translate-y-1 transition-all duration-300 overflow-hidden"
-                        on:click={() => navigateToSection('classes')}
+                        on:click={() => navigateToSection('schedule')}
                      >
                         <div class="absolute inset-0 bg-gradient-to-r from-white/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
                         <div class="relative flex flex-col items-center justify-center space-y-3">
                            <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z"/>
                            </svg>
-                           <span class="text-sm font-medium">Kelola Kelas</span>
+                           <span class="text-sm font-medium">Lihat Jadwal</span>
                         </div>
                      </button>
                   </div>
@@ -603,7 +627,7 @@
                   </div>
                </div>
 
-               <!-- Classes Card -->
+               <!-- Schedule Card -->
                <div class="group bg-white/80 backdrop-blur-xl shadow-2xl rounded-3xl border border-white/20 hover:shadow-3xl transition-all duration-500 fade-in-up stagger-3">
                   <div class="px-8 py-8">
                      <div class="flex items-center space-x-3 mb-6">
@@ -612,56 +636,58 @@
                               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z"/>
                            </svg>
                         </div>
-                        <h3 class="text-xl font-bold bg-gradient-to-r from-gray-900 to-gray-600 bg-clip-text text-transparent">Kelas Diampu</h3>
+                        <h3 class="text-xl font-bold bg-gradient-to-r from-gray-900 to-gray-600 bg-clip-text text-transparent">Jadwal Saat Ini</h3>
                      </div>
                      <div class="space-y-4">
-                        {#each classes.slice(0, 5) as cls}
+                        {#if currentSchedule.hasActiveSchedule}
                            <div class="group/item bg-gradient-to-r from-emerald-50 to-green-50 hover:from-emerald-100 hover:to-green-100 p-4 rounded-2xl border border-emerald-100 hover:border-emerald-200 transition-all duration-300 hover:shadow-md">
                               <div class="flex items-center justify-between mb-2">
                                  <div class="flex-1">
-                                    <p class="text-sm font-semibold text-gray-900 mb-1">{cls.name}</p>
+                                    <p class="text-sm font-semibold text-gray-900 mb-1">{currentSchedule.schedule.subject_name}</p>
                                     <p class="text-xs text-gray-600 flex items-center">
                                        <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z"/>
+                                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path>
                                        </svg>
-                                       {cls.grade_level} - {cls.academic_year}
+                                       Kelas {currentSchedule.schedule.kelas} • {currentSchedule.schedule.start_time}-{currentSchedule.schedule.end_time}
                                     </p>
                                  </div>
-                                 <button class="bg-gradient-to-r from-emerald-500 to-green-500 hover:from-emerald-600 hover:to-green-600 text-white px-4 py-2 rounded-xl text-xs font-semibold shadow-sm hover:shadow-md transform hover:-translate-y-0.5 transition-all duration-200">
-                                    Kelola
-                                 </button>
+                                 <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                    Sedang Berlangsung
+                                 </span>
                               </div>
-                              <!-- Mata Pelajaran yang Diampu -->
-                              {#if cls.subjects && cls.subjects.length > 0}
-                                 <div class="mt-2 space-y-1">
-                                    {#each cls.subjects.slice(0, 2) as subject}
-                                       <div class="flex items-center justify-between text-xs bg-white/50 rounded-lg px-2 py-1">
-                                          <span class="font-medium text-gray-700">{subject.name}</span>
-                                          <span class="text-gray-500">{subject.day} {subject.start_time}-{subject.end_time}</span>
-                                       </div>
-                                    {/each}
-                                    {#if cls.subjects.length > 2}
-                                       <div class="text-xs text-gray-500 text-center">+{cls.subjects.length - 2} mata pelajaran lainnya</div>
-                                    {/if}
-                                 </div>
-                              {:else}
-                                 <div class="mt-2 text-xs text-gray-500 italic">Belum ada mata pelajaran yang ditugaskan</div>
-                              {/if}
+                              <p class="text-xs text-gray-500 leading-relaxed">{currentSchedule.schedule.current_day}, {currentSchedule.schedule.current_time}</p>
                            </div>
                         {:else}
-                           <p class="text-sm text-gray-500 text-center py-4">Belum ada kelas yang ditugaskan</p>
-                        {/each}
+                           <div class="text-center py-8">
+                              <div class="w-16 h-16 mx-auto mb-4 bg-gray-100 rounded-full flex items-center justify-center">
+                                 <svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                 </svg>
+                              </div>
+                              <p class="text-gray-500 text-sm">{currentSchedule.message}</p>
+                           </div>
+                        {/if}
                      </div>
                      <div class="mt-6">
-                        <button class="w-full bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-600 hover:to-green-700 text-white py-3 px-6 rounded-2xl text-sm font-semibold shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 transition-all duration-300" on:click={() => navigateToSection('classes')}>
-                           <span class="flex items-center justify-center space-x-2">
-                              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
-                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
-                              </svg>
-                              <span>Lihat Semua Kelas</span>
-                           </span>
-                        </button>
+                        {#if currentSchedule.hasActiveSchedule}
+                           <button class="w-full bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white py-3 px-6 rounded-2xl text-sm font-semibold shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 transition-all duration-300" on:click={openQRScanner}>
+                              <span class="flex items-center justify-center space-x-2">
+                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 16h4.01M12 8h4.01M16 4h4.01"></path>
+                                 </svg>
+                                 <span>Scan QR Murid</span>
+                              </span>
+                           </button>
+                        {:else}
+                           <button class="w-full bg-gray-400 text-white py-3 px-6 rounded-2xl text-sm font-semibold cursor-not-allowed" disabled>
+                              <span class="flex items-center justify-center space-x-2">
+                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                 </svg>
+                                 <span>Tidak Ada Jadwal Aktif</span>
+                              </span>
+                           </button>
+                        {/if}
                      </div>
                   </div>
                </div>
@@ -683,45 +709,49 @@
                      <h3 class="text-2xl font-bold bg-gradient-to-r from-gray-900 to-gray-600 bg-clip-text text-transparent">Manajemen Absensi</h3>
                   </div>
                   
-                  <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                     {#each classes as cls}
-                        <div class="group relative bg-gradient-to-br from-white to-blue-50/30 border border-blue-100/50 rounded-2xl p-6 shadow-lg hover:shadow-2xl transform hover:-translate-y-2 transition-all duration-300 overflow-hidden">
-                           <div class="absolute inset-0 bg-gradient-to-br from-blue-500/5 to-indigo-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-                           <div class="relative">
-                              <div class="flex items-center justify-between mb-4">
-                                 <div class="w-10 h-10 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center shadow-md">
-                                    <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/>
-                                    </svg>
+                  <div class="max-w-4xl mx-auto">
+                     {#if teacherSubjects.length > 0}
+                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                           {#each teacherSubjects as subject}
+                              <div class="group relative bg-gradient-to-br from-white to-blue-50/30 border border-blue-100/50 rounded-2xl p-6 shadow-lg hover:shadow-2xl transform hover:-translate-y-2 transition-all duration-300 overflow-hidden">
+                                 <div class="absolute inset-0 bg-gradient-to-br from-blue-500/5 to-indigo-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                                 <div class="relative">
+                                    <div class="flex items-center justify-between mb-4">
+                                       <div class="w-12 h-12 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center shadow-md">
+                                          <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/>
+                                          </svg>
+                                       </div>
+                                       <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-gradient-to-r from-blue-100 to-indigo-100 text-blue-800 shadow-sm">
+                                          {subject.kode}
+                                       </span>
+                                    </div>
+                                    <h4 class="text-lg font-bold text-gray-900 mb-2 group-hover:text-blue-700 transition-colors">{subject.nama}</h4>
+                                    <p class="text-sm text-gray-600 mb-6">{subject.deskripsi || 'Mata pelajaran yang Anda ampu'}</p>
+                                    <button
+                                       class="w-full bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white py-3 px-4 rounded-xl text-sm font-semibold shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 transition-all duration-300 flex items-center justify-center space-x-2"
+                                       on:click={() => openQRScanner(subject)}
+                                    >
+                                       <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 16h4.01M12 8h4.01M16 4h4.01"></path>
+                                       </svg>
+                                       <span>Scan QR Murid</span>
+                                    </button>
                                  </div>
-                                 <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-gradient-to-r from-blue-100 to-indigo-100 text-blue-800 shadow-sm">
-                                    {cls.grade_level}
-                                 </span>
                               </div>
-                              <h4 class="text-lg font-bold text-gray-900 mb-2 group-hover:text-blue-700 transition-colors">{cls.name}</h4>
-                              <p class="text-sm text-gray-600 mb-6">{cls.academic_year}</p>
-                              <button 
-                                 class="w-full bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white py-3 px-4 rounded-xl text-sm font-semibold shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 transition-all duration-300 flex items-center justify-center space-x-2"
-                                 on:click={() => generateQRCode(cls.id)}
-                              >
-                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V6a1 1 0 00-1-1H5a1 1 0 00-1 1v1a1 1 0 001 1z"/>
-                                 </svg>
-                                 <span>Generate QR Code</span>
-                              </button>
-                           </div>
+                           {/each}
                         </div>
                      {:else}
-                        <div class="col-span-full text-center py-16">
-                           <div class="w-16 h-16 bg-gradient-to-br from-gray-100 to-gray-200 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                              <svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/>
+                        <div class="text-center py-16">
+                           <div class="w-20 h-20 bg-gradient-to-br from-gray-100 to-gray-200 rounded-2xl flex items-center justify-center mx-auto mb-6">
+                              <svg class="w-10 h-10 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/>
                               </svg>
                            </div>
-                           <p class="text-lg font-medium text-gray-500 mb-2">Belum Ada Kelas</p>
-                           <p class="text-sm text-gray-400">Anda belum mengampu kelas manapun</p>
+                           <h4 class="text-xl font-semibold text-gray-500 mb-2">Belum Ada Mata Pelajaran</h4>
+                           <p class="text-gray-400 mb-6">Anda belum mengampu mata pelajaran manapun. Hubungi administrator untuk mendapatkan akses.</p>
                         </div>
-                     {/each}
+                     {/if}
                   </div>
                </div>
             </div>
@@ -942,8 +972,8 @@
          </div>
       {/if}
 
-      {#if currentSection === 'classes'}
-         <!-- Classes Section -->
+      {#if currentSection === 'schedule'}
+         <!-- Schedule Section -->
          <div class="px-4 py-6 sm:px-0">
             <div class="bg-white/80 backdrop-blur-xl shadow-2xl rounded-3xl border border-white/20">
                <div class="px-8 py-8 sm:p-10">
@@ -953,100 +983,63 @@
                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path>
                         </svg>
                      </div>
-                     <h3 class="text-2xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">Kelas yang Diampu</h3>
+                     <h3 class="text-2xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">Jadwal Mengajar</h3>
                   </div>
                   
-                  <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                     {#each classes as cls}
-                        <div class="bg-gradient-to-br from-white/90 to-gray-50/90 backdrop-blur-sm border border-white/30 rounded-2xl p-6 shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300 group">
-                           <div class="flex items-center justify-between mb-4">
-                              <h4 class="text-xl font-bold text-gray-900 group-hover:text-blue-600 transition-colors duration-200">{cls.name}</h4>
-                              <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-gradient-to-r from-blue-400 to-indigo-500 text-white shadow-md">
-                                 {cls.grade_level}
-                              </span>
-                           </div>
-                           <p class="text-gray-600 mb-6 leading-relaxed">{cls.description || 'Tidak ada deskripsi'}</p>
-                           <div class="space-y-3 mb-6">
-                              <div class="flex justify-between items-center p-3 bg-white/50 rounded-xl">
-                                 <div class="flex items-center space-x-2">
-                                    <svg class="w-4 h-4 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3a2 2 0 012-2h4a2 2 0 012 2v4m-6 0h6m-6 0l-2 13a2 2 0 002 2h6a2 2 0 002-2L16 7"></path>
-                                    </svg>
-                                    <span class="text-gray-600 font-medium">Tahun Akademik</span>
-                                 </div>
-                                 <span class="text-gray-900 font-bold">{cls.academic_year}</span>
-                              </div>
-                              <div class="flex justify-between items-center p-3 bg-white/50 rounded-xl">
-                                 <div class="flex items-center space-x-2">
-                                    <svg class="w-4 h-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path>
-                                    </svg>
-                                    <span class="text-gray-600 font-medium">Maks. Siswa</span>
-                                 </div>
-                                 <span class="text-gray-900 font-bold">{cls.max_students}</span>
-                              </div>
-                           </div>
-
-                           <!-- Mata Pelajaran yang Diampu -->
-                           {#if cls.subjects && cls.subjects.length > 0}
-                              <div class="mb-6">
-                                 <h5 class="text-sm font-semibold text-gray-700 mb-3 flex items-center">
-                                    <svg class="w-4 h-4 mr-2 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/>
-                                    </svg>
-                                    Mata Pelajaran
-                                 </h5>
-                                 <div class="space-y-2">
-                                    {#each cls.subjects as subject}
-                                       <div class="bg-gradient-to-r from-purple-50 to-pink-50 border border-purple-100 rounded-lg p-3">
-                                          <div class="flex justify-between items-start">
-                                             <div>
-                                                <p class="font-medium text-gray-900">{subject.name}</p>
-                                                <p class="text-xs text-gray-600">{subject.code}</p>
-                                             </div>
-                                             <div class="text-right">
-                                                <p class="text-sm font-medium text-purple-600">{subject.day}</p>
-                                                <p class="text-xs text-gray-500">{subject.start_time} - {subject.end_time}</p>
-                                             </div>
-                                          </div>
-                                          {#if subject.notes}
-                                             <p class="text-xs text-gray-500 mt-2 italic">{subject.notes}</p>
-                                          {/if}
+                  <div class="max-w-6xl mx-auto">
+                     {#if weeklySchedule.length > 0}
+                        <div class="space-y-6">
+                           {#each weeklySchedule as daySchedule}
+                              <div class="bg-gradient-to-br from-white/90 to-blue-50/30 backdrop-blur-sm border border-blue-100/50 rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all duration-300">
+                                 <div class="flex items-center justify-between mb-4">
+                                    <h4 class="text-xl font-bold text-gray-900 flex items-center">
+                                       <div class="w-10 h-10 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center shadow-md mr-3">
+                                          <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3a2 2 0 012-2h4a2 2 0 012 2v4m-6 0h6m-6 0l-2 13a2 2 0 002 2h6a2 2 0 002-2L16 7"></path>
+                                          </svg>
                                        </div>
-                                    {/each}
+                                       {daySchedule.day}
+                                    </h4>
+                                    <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-semibold bg-blue-100 text-blue-800">
+                                       {daySchedule.schedules.length} Jadwal
+                                    </span>
                                  </div>
+
+                                 {#if daySchedule.schedules.length > 0}
+                                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                       {#each daySchedule.schedules as schedule}
+                                          <div class="bg-white/70 rounded-xl p-4 border border-white/50 hover:bg-white/90 transition-all duration-200">
+                                             <div class="flex items-center justify-between mb-2">
+                                                <span class="text-sm font-semibold text-blue-600">{schedule.subject_code}</span>
+                                                <span class="text-xs text-gray-500">{schedule.start_time} - {schedule.end_time}</span>
+                                             </div>
+                                             <h5 class="font-medium text-gray-900 mb-1">{schedule.subject_name}</h5>
+                                             <p class="text-sm text-gray-600">Kelas {schedule.kelas}</p>
+                                          </div>
+                                       {/each}
+                                    </div>
+                                 {:else}
+                                    <div class="text-center py-8">
+                                       <svg class="w-12 h-12 text-gray-300 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                       </svg>
+                                       <p class="text-gray-500">Tidak ada jadwal</p>
+                                    </div>
+                                 {/if}
                               </div>
-                           {:else}
-                              <div class="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-                                 <p class="text-sm text-yellow-700 text-center">Belum ada mata pelajaran yang ditugaskan untuk kelas ini</p>
-                              </div>
-                           {/if}
-                           <div class="flex space-x-3">
-                              <button class="flex-1 bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white py-3 px-4 rounded-xl text-sm font-semibold shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200 flex items-center justify-center space-x-2">
-                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z"></path>
-                                 </svg>
-                                 <span>Kelola Siswa</span>
-                              </button>
-                              <button class="flex-1 bg-gradient-to-r from-gray-500 to-gray-600 hover:from-gray-600 hover:to-gray-700 text-white py-3 px-4 rounded-xl text-sm font-semibold shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200 flex items-center justify-center space-x-2">
-                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                                 </svg>
-                                 <span>Jadwal</span>
-                              </button>
-                           </div>
+                           {/each}
                         </div>
                      {:else}
-                        <div class="col-span-full text-center py-16">
-                           <div class="mx-auto w-24 h-24 bg-gradient-to-br from-gray-100 to-gray-200 rounded-full flex items-center justify-center mb-4">
+                        <div class="text-center py-16">
+                           <div class="mx-auto w-24 h-24 bg-gradient-to-br from-gray-100 to-gray-200 rounded-full flex items-center justify-center mb-6">
                               <svg class="w-12 h-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path>
+                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3a2 2 0 012-2h4a2 2 0 012 2v4m-6 0h6m-6 0l-2 13a2 2 0 002 2h6a2 2 0 002-2L16 7"></path>
                               </svg>
                            </div>
-                           <p class="text-lg text-gray-500 font-medium">Anda belum mengampu kelas manapun</p>
-                           <p class="text-sm text-gray-400 mt-2">Hubungi administrator untuk mendapatkan akses kelas</p>
+                           <h4 class="text-2xl font-semibold text-gray-500 mb-4">Belum Ada Jadwal Mengajar</h4>
+                           <p class="text-gray-400 mb-8">Anda belum memiliki jadwal mengajar. Hubungi administrator untuk mendapatkan jadwal.</p>
                         </div>
-                     {/each}
+                     {/if}
                   </div>
                </div>
             </div>
@@ -1055,48 +1048,17 @@
    </main>
 </div>
 
-<!-- QR Code Modal -->
-{#if showQRCode && qrCodeData}
+<!-- QR Scanner Modal -->
+{#if showQRScanner}
    <div class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-      <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
-         <div class="mt-3 text-center">
-            <h3 class="text-lg leading-6 font-medium text-gray-900">QR Code Absensi</h3>
-            <div class="mt-2 space-y-1">
-               <p class="text-sm text-gray-700 font-medium">Kelas: {selectedClass?.name}</p>
-               {#if selectedSubject}
-                  <p class="text-sm text-blue-600 font-medium">{selectedSubject.name} ({selectedSubject.code})</p>
-                  <p class="text-xs text-gray-500">{selectedSubject.day} • {selectedSubject.start_time} - {selectedSubject.end_time}</p>
-               {/if}
-            </div>
-            <div class="mt-4 flex justify-center">
-               <img src={qrCodeData.qrCodeDataURL} alt="QR Code" class="w-64 h-64">
-            </div>
-            <p class="text-sm text-gray-500 mt-2">
-               Berlaku hingga: {formatDateTime(qrCodeData.session.expires_at)}
-            </p>
-            <div class="items-center px-4 py-3">
-               <button 
-                  class="px-4 py-2 bg-blue-500 text-white text-base font-medium rounded-md w-full shadow-sm hover:bg-blue-700"
-                  on:click={closeQRCode}
-               >
-                  Tutup
-               </button>
-            </div>
-         </div>
-      </div>
-   </div>
-{/if}
-
-<!-- Subject Selection Modal -->
-{#if showSubjectSelection}
-   <div class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-      <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+      <div class="relative top-10 mx-auto p-5 border w-full max-w-md shadow-lg rounded-md bg-white">
          <div class="mt-3">
             <div class="flex items-center justify-between mb-4">
-               <h3 class="text-lg font-medium text-gray-900">Pilih Mata Pelajaran</h3>
+               <h3 class="text-lg leading-6 font-medium text-gray-900">Scan QR Code Murid</h3>
                <button
                   class="text-gray-400 hover:text-gray-600"
-                  on:click={closeSubjectSelection}
+                  on:click={closeQRScanner}
+                  aria-label="Tutup scanner"
                >
                   <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
@@ -1104,39 +1066,63 @@
                </button>
             </div>
 
-            <p class="text-sm text-gray-600 mb-4">
-               Pilih mata pelajaran yang sedang Anda ajarkan untuk membuat QR code absensi:
-            </p>
+            <div class="text-center">
+               {#if selectedSubject}
+                  <div class="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
+                     <p class="text-sm font-medium text-blue-800">Mata Pelajaran: {selectedSubject.nama}</p>
+                     <p class="text-xs text-blue-600">Kode: {selectedSubject.kode}</p>
+                  </div>
+               {/if}
+               <p class="text-sm text-gray-600 mb-4">
+                  Arahkan kamera ke QR code murid dengan format: NSID_Nama Lengkap
+               </p>
 
-            <div class="space-y-3 max-h-60 overflow-y-auto">
-               {#each availableSubjects as subject}
-                  <button
-                     class="w-full text-left p-3 border border-gray-200 rounded-lg hover:bg-blue-50 hover:border-blue-300 transition-all duration-200"
-                     on:click={() => selectSubjectAndGenerate(subject.id)}
-                  >
-                     <div class="flex justify-between items-start">
-                        <div>
-                           <p class="font-medium text-gray-900">{subject.name}</p>
-                           <p class="text-sm text-gray-600">{subject.code}</p>
-                        </div>
-                        <div class="text-right">
-                           <p class="text-sm font-medium text-blue-600">{subject.day}</p>
-                           <p class="text-xs text-gray-500">{subject.start_time} - {subject.end_time}</p>
-                        </div>
+               <!-- QR Scanner -->
+               <div id="qr-reader" class="mb-4"></div>
+
+               {#if isScanning}
+                  <div class="flex items-center justify-center mb-4">
+                     <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500"></div>
+                     <span class="ml-2 text-sm text-gray-600">Memproses...</span>
+                  </div>
+               {/if}
+
+               {#if scanError}
+                  <div class="bg-red-50 border border-red-200 rounded-md p-3 mb-4">
+                     <p class="text-sm text-red-600">{scanError}</p>
+                  </div>
+               {/if}
+
+               {#if scanResult && scanResult.success}
+                  <div class="bg-green-50 border border-green-200 rounded-md p-4 mb-4">
+                     <div class="flex items-center mb-2">
+                        <svg class="w-5 h-5 text-green-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                        </svg>
+                        <p class="text-sm font-medium text-green-800">Absensi Berhasil!</p>
                      </div>
-                  </button>
-               {/each}
-            </div>
+                     <p class="text-sm text-green-700">{scanResult.message}</p>
+                     {#if scanResult.student}
+                        <div class="mt-2 text-xs text-green-600">
+                           <p>NSID: {scanResult.student.nipd}</p>
+                           <p>Nama: {scanResult.student.nama}</p>
+                           <p>Kelas: {scanResult.student.kelas}</p>
+                        </div>
+                     {/if}
+                  </div>
+               {/if}
 
-            <div class="mt-4 pt-4 border-t border-gray-200">
-               <button
-                  class="w-full px-4 py-2 bg-gray-300 text-gray-700 text-sm font-medium rounded-md hover:bg-gray-400 transition-colors duration-200"
-                  on:click={closeSubjectSelection}
-               >
-                  Batal
-               </button>
+               <div class="flex justify-center">
+                  <button
+                     class="px-6 py-2 bg-gray-300 text-gray-700 text-base font-medium rounded-md shadow-sm hover:bg-gray-400"
+                     on:click={closeQRScanner}
+                  >
+                     Tutup Scanner
+                  </button>
+               </div>
             </div>
          </div>
       </div>
    </div>
 {/if}
+

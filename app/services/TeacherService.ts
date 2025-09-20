@@ -404,6 +404,141 @@ class TeacherService {
 
         return errors;
     }
+
+    /**
+     * Get current active schedule for teacher
+     * Returns the subject and class that teacher should be teaching right now
+     */
+    async getCurrentActiveSchedule(teacherUserId: string): Promise<{
+        hasActiveSchedule: boolean,
+        schedule?: any,
+        message: string
+    }> {
+        try {
+            const now = new Date();
+            const dayNames = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+            const currentDay = dayNames[now.getDay()];
+            const currentTime = now.toTimeString().slice(0, 5); // HH:MM format
+
+            // Get current active schedule for teacher
+            const schedule = await DB.from("subject_schedules as ss")
+                .join("subjects as s", "ss.subject_id", "s.id")
+                .join("teacher_subjects as ts", "s.id", "ts.subject_id")
+                .join("teachers as t", "ts.teacher_id", "t.id")
+                .where("t.user_id", teacherUserId)
+                .where("ss.day", currentDay)
+                .where("ss.start_time", "<=", currentTime)
+                .where("ss.end_time", ">=", currentTime)
+                .where("ss.is_active", true)
+                .where("ts.is_active", true)
+                .select(
+                    "ss.*",
+                    "s.id as subject_id",
+                    "s.nama as subject_name",
+                    "s.kode as subject_code",
+                    "s.deskripsi as subject_description"
+                )
+                .first();
+
+            if (!schedule) {
+                return {
+                    hasActiveSchedule: false,
+                    message: `Tidak ada jadwal mengajar saat ini (${currentDay}, ${currentTime})`
+                };
+            }
+
+            return {
+                hasActiveSchedule: true,
+                schedule: {
+                    ...schedule,
+                    current_day: currentDay,
+                    current_time: currentTime
+                },
+                message: `Sedang mengajar ${schedule.subject_name} di kelas ${schedule.kelas}`
+            };
+
+        } catch (error) {
+            console.error("Error getting current active schedule:", error);
+            return {
+                hasActiveSchedule: false,
+                message: "Terjadi kesalahan saat mengambil jadwal"
+            };
+        }
+    }
+
+    /**
+     * Get all subjects taught by teacher
+     */
+    async getTeacherSubjects(teacherUserId: string): Promise<any[]> {
+        try {
+            const subjects = await DB.from("teacher_subjects as ts")
+                .join("subjects as s", "ts.subject_id", "s.id")
+                .join("teachers as t", "ts.teacher_id", "t.id")
+                .where("t.user_id", teacherUserId)
+                .where("ts.is_active", true)
+                .where("s.is_active", true)
+                .select(
+                    "s.id",
+                    "s.nama",
+                    "s.kode",
+                    "s.deskripsi"
+                )
+                .orderBy("s.nama");
+
+            return subjects;
+        } catch (error) {
+            console.error("Error getting teacher subjects:", error);
+            return [];
+        }
+    }
+
+    /**
+     * Get weekly schedule for teacher
+     */
+    async getTeacherWeeklySchedule(teacherUserId: string): Promise<any[]> {
+        try {
+            const schedule = await DB.from("subject_schedules as ss")
+                .join("subjects as s", "ss.subject_id", "s.id")
+                .join("teacher_subjects as ts", "s.id", "ts.subject_id")
+                .join("teachers as t", "ts.teacher_id", "t.id")
+                .where("t.user_id", teacherUserId)
+                .where("ss.is_active", true)
+                .where("ts.is_active", true)
+                .select(
+                    "ss.day",
+                    "ss.start_time",
+                    "ss.end_time",
+                    "ss.kelas",
+                    "s.id as subject_id",
+                    "s.nama as subject_name",
+                    "s.kode as subject_code"
+                )
+                .orderBy("ss.day")
+                .orderBy("ss.start_time");
+
+            // Group by day for easier display
+            const groupedSchedule = schedule.reduce((acc, item) => {
+                const day = item.day;
+                if (!acc[day]) {
+                    acc[day] = [];
+                }
+                acc[day].push(item);
+                return acc;
+            }, {});
+
+            // Convert to array format with day order
+            const dayOrder = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat'];
+            const result = dayOrder.map(day => ({
+                day,
+                schedules: groupedSchedule[day] || []
+            }));
+
+            return result;
+        } catch (error) {
+            console.error("Error getting teacher weekly schedule:", error);
+            return [];
+        }
+    }
 }
 
 export default new TeacherService();
