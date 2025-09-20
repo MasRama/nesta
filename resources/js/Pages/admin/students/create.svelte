@@ -1,8 +1,10 @@
 <script>
    import { router } from '@inertiajs/svelte';
-   
+   import AdminHeader from '../../../Components/AdminHeader.svelte';
+   import AdminNavigation from '../../../Components/AdminNavigation.svelte';
+
    export let user;
-   
+
    let formData = {
       nipd: '',
       nama: '',
@@ -12,9 +14,10 @@
       jenis_kelamin: '',
       agama: ''
    };
-   
+
    let errors = {};
    let isSubmitting = false;
+   let currentSection = 'students';
    
    const agamaOptions = [
       'Islam',
@@ -69,64 +72,15 @@
    function goBack() {
       router.visit('/admin/students');
    }
-   
-   function logout() {
-      router.post('/logout');
-   }
 </script>
 
 <svelte:head>
    <title>Tambah Siswa - NETSA Admin</title>
 </svelte:head>
 
-<div class="min-h-screen bg-gradient-to-br from-slate-50 via-red-50 to-rose-100">
-   <!-- Modern Material Design Header -->
-   <header class="bg-gradient-to-r from-red-600 via-red-700 to-rose-800 shadow-xl relative overflow-hidden header-enhanced">
-      <!-- Background Pattern -->
-      <div class="absolute inset-0 opacity-10">
-         <div class="absolute top-0 left-0 w-full h-full">
-            <svg width="60" height="60" viewBox="0 0 60 60" xmlns="http://www.w3.org/2000/svg">
-               <g fill="none" fill-rule="evenodd">
-                  <g fill="#ffffff" fill-opacity="0.1">
-                     <circle cx="30" cy="30" r="2"/>
-                  </g>
-               </g>
-            </svg>
-         </div>
-      </div>
-
-      <div class="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-         <div class="flex justify-between items-center h-20">
-            <div class="flex items-center space-x-4">
-               <button
-                  on:click={goBack}
-                  aria-label="Kembali ke halaman sebelumnya"
-                  class="w-12 h-12 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center hover:bg-white/30 transition-colors"
-               >
-                  <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
-                  </svg>
-               </button>
-               <div>
-                  <h1 class="text-2xl font-bold text-white">Tambah Siswa Baru</h1>
-                  <p class="text-red-100 text-sm">Form Input Data Siswa</p>
-               </div>
-            </div>
-            <div class="flex items-center space-x-4">
-               <div class="text-right">
-                  <p class="text-white font-medium">{user.name}</p>
-                  <p class="text-red-100 text-sm">Administrator</p>
-               </div>
-               <button
-                  on:click={logout}
-                  class="bg-white/20 backdrop-blur-sm text-white px-4 py-2 rounded-xl hover:bg-white/30 transition-colors border border-white/20"
-               >
-                  Logout
-               </button>
-            </div>
-         </div>
-      </div>
-   </header>
+<div class="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100">
+   <AdminHeader {user} title="Tambah Siswa Baru" subtitle="Portal Manajemen NETSA" />
+   <AdminNavigation {currentSection} />
 
    <!-- Main Content -->
    <main class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
