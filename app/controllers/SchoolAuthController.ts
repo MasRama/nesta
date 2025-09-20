@@ -1,5 +1,6 @@
 import DB from "../services/DB";
 import Authenticate from "../services/Authenticate";
+import TeacherService from "../services/TeacherService";
 import { Response, Request } from "../../type";
 import { randomUUID, pbkdf2Sync } from "crypto";
 import dayjs from "dayjs";
@@ -250,10 +251,11 @@ class SchoolAuthController {
    }
 
    private async getTeacherDashboard(user: any, response: Response) {
-      // Get teacher's classes
-      const classes = await DB.from("classes")
-         .where("teacher_id", user.id)
-         .select("*");
+      // Get teacher's classes and subjects based on subject_classes assignments
+      const classes = await TeacherService.getTeacherClassesAndSubjects(user.id);
+
+      // Get current teaching schedule
+      const currentSchedule = await TeacherService.getCurrentTeachingSchedule(user.id);
 
       // Get recent journals
       const journals = await DB.from("teacher_journals")
@@ -270,6 +272,7 @@ class SchoolAuthController {
       return response.inertia("dashboard/teacher", {
          user,
          classes,
+         currentSchedule,
          journals,
          exams
       });

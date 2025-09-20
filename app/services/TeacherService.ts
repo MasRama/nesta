@@ -200,9 +200,121 @@ class TeacherService {
             updated_at: Date.now()
         });
     }
-    
 
-    
+    /**
+     * Get classes and subjects taught by teacher based on subject_classes assignments
+     */
+    async getTeacherClassesAndSubjects(userId: string) {
+        try {
+            // Get classes and subjects assigned to this teacher
+            const assignments = await DB.from('subject_classes as sc')
+                .join('classes as c', 'sc.class_id', 'c.id')
+                .join('subjects as s', 'sc.subject_id', 's.id')
+                .leftJoin('teachers as t', 't.user_id', 'sc.teacher_id')
+                .select(
+                    'c.id as class_id',
+                    'c.name as class_name',
+                    'c.grade_level',
+                    'c.academic_year',
+                    'c.description as class_description',
+                    'c.max_students',
+                    's.id as subject_id',
+                    's.nama as subject_name',
+                    's.kode as subject_code',
+                    's.deskripsi as subject_description',
+                    'sc.day',
+                    'sc.start_time',
+                    'sc.end_time',
+                    'sc.notes',
+                    'sc.is_active as assignment_active',
+                    't.nama as teacher_name',
+                    't.nip as teacher_nip'
+                )
+                .where('sc.teacher_id', userId)
+                .where('sc.is_active', true)
+                .where('s.is_active', true)
+                .orderBy('c.grade_level')
+                .orderBy('c.name')
+                .orderBy('sc.day')
+                .orderBy('sc.start_time');
+
+            // Group by class to get unique classes with their subjects
+            const classesMap = new Map();
+
+            assignments.forEach(assignment => {
+                const classId = assignment.class_id;
+
+                if (!classesMap.has(classId)) {
+                    classesMap.set(classId, {
+                        id: assignment.class_id,
+                        name: assignment.class_name,
+                        grade_level: assignment.grade_level,
+                        academic_year: assignment.academic_year,
+                        description: assignment.class_description,
+                        max_students: assignment.max_students,
+                        subjects: []
+                    });
+                }
+
+                const classData = classesMap.get(classId);
+                classData.subjects.push({
+                    id: assignment.subject_id,
+                    name: assignment.subject_name,
+                    code: assignment.subject_code,
+                    description: assignment.subject_description,
+                    day: assignment.day,
+                    start_time: assignment.start_time,
+                    end_time: assignment.end_time,
+                    notes: assignment.notes
+                });
+            });
+
+            return Array.from(classesMap.values());
+
+        } catch (error) {
+            console.error('Error getting teacher classes and subjects:', error);
+            throw error;
+        }
+    }
+
+    /**
+     * Get current teaching schedule for teacher (for today)
+     */
+    async getCurrentTeachingSchedule(userId: string) {
+        try {
+            const today = new Date();
+            const dayNames = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+            const currentDay = dayNames[today.getDay()];
+            const currentTime = today.toTimeString().slice(0, 5); // HH:MM format
+
+            const currentSchedule = await DB.from('subject_classes as sc')
+                .join('classes as c', 'sc.class_id', 'c.id')
+                .join('subjects as s', 'sc.subject_id', 's.id')
+                .select(
+                    'c.id as class_id',
+                    'c.name as class_name',
+                    's.id as subject_id',
+                    's.nama as subject_name',
+                    's.kode as subject_code',
+                    'sc.day',
+                    'sc.start_time',
+                    'sc.end_time'
+                )
+                .where('sc.teacher_id', userId)
+                .where('sc.day', currentDay)
+                .where('sc.start_time', '<=', currentTime)
+                .where('sc.end_time', '>=', currentTime)
+                .where('sc.is_active', true)
+                .first();
+
+            return currentSchedule;
+
+        } catch (error) {
+            console.error('Error getting current teaching schedule:', error);
+            throw error;
+        }
+    }
+
     /**
      * Hash password using crypto
      */

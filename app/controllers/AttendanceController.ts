@@ -1,6 +1,7 @@
 import { Response, Request } from "../../type";
 import AttendanceService from "../services/AttendanceService";
 import RoleAuth from "../middlewares/roleAuth";
+import DB from "../services/DB";
 
 class AttendanceController {
    /**
@@ -8,8 +9,8 @@ class AttendanceController {
     */
    public async generateQRCode(request: Request, response: Response) {
       try {
-         const { class_id, duration_minutes = 30 } = await request.json();
-         
+         const { class_id, subject_id, duration_minutes = 30 } = await request.json();
+
          if (!class_id) {
             return response.status(400).json({ error: "Class ID is required" });
          }
@@ -21,15 +22,70 @@ class AttendanceController {
          }
 
          const result = await AttendanceService.generateQRCode(
-            class_id, 
-            request.user.id, 
+            class_id,
+            request.user.id,
+            subject_id,
             duration_minutes
          );
 
-         return response.json(result);
+         if (result.success) {
+            return response.json({
+               session: result.session,
+               qrCodeDataURL: result.qrCodeDataURL,
+               message: result.message
+            });
+         } else {
+            return response.status(400).json({ error: result.message });
+         }
       } catch (error) {
          console.error("Error generating QR code:", error);
          return response.status(500).json({ error: "Failed to generate QR code" });
+      }
+   }
+
+   /**
+    * Get available subjects for attendance (Teacher only)
+    */
+   public async getAvailableSubjects(request: Request, response: Response) {
+      try {
+         const { class_id } = request.params;
+
+         if (!class_id) {
+            return response.status(400).json({ error: "Class ID is required" });
+         }
+
+         // Check if teacher can access this class
+         const canAccess = await RoleAuth.canAccessClass(request, class_id);
+         if (!canAccess) {
+            return response.status(403).json({ error: "Unauthorized access to class" });
+         }
+
+         const now = new Date();
+         const dayNames = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+         const currentDay = dayNames[now.getDay()];
+
+         // Get subjects that teacher teaches in this class today
+         const subjects = await DB.from('subject_classes as sc')
+            .join('subjects as s', 'sc.subject_id', 's.id')
+            .select(
+               's.id',
+               's.nama as name',
+               's.kode as code',
+               'sc.day',
+               'sc.start_time',
+               'sc.end_time'
+            )
+            .where('sc.teacher_id', request.user.id)
+            .where('sc.class_id', class_id)
+            .where('sc.day', currentDay)
+            .where('sc.is_active', true)
+            .where('s.is_active', true)
+            .orderBy('sc.start_time');
+
+         return response.json({ subjects });
+      } catch (error) {
+         console.error("Error getting available subjects:", error);
+         return response.status(500).json({ error: "Failed to get available subjects" });
       }
    }
 

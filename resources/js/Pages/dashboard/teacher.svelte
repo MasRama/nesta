@@ -11,6 +11,10 @@
    let showQRCode = false;
    let qrCodeData = null;
    let selectedClass = null;
+   let showSubjectSelection = false;
+   let availableSubjects = [];
+   let selectedSubject = null;
+   let pendingClassId = null;
    
    function navigateToSection(section) {
       currentSection = section;
@@ -28,30 +32,78 @@
       return new Date(dateString).toLocaleString('id-ID');
    }
    
-   async function generateQRCode(classId) {
+   async function generateQRCode(classId, subjectId = null) {
+      if (!subjectId) {
+         // First, get available subjects for this class
+         await showSubjectSelectionModal(classId);
+         return;
+      }
+
       try {
          const response = await fetch('/api/attendance/generate-qr', {
             method: 'POST',
             headers: {
                'Content-Type': 'application/json',
             },
-            body: JSON.stringify({ 
+            body: JSON.stringify({
                class_id: classId,
-               duration_minutes: 30 
+               subject_id: subjectId,
+               duration_minutes: 30
             })
          });
-         
+
          if (response.ok) {
             const data = await response.json();
             qrCodeData = data;
             showQRCode = true;
             selectedClass = classes.find(c => c.id === classId);
+            selectedSubject = availableSubjects.find(s => s.id === subjectId);
+            closeSubjectSelection();
          } else {
-            alert('Gagal membuat QR code absensi');
+            const errorData = await response.json();
+            alert(errorData.error || 'Gagal membuat QR code absensi');
          }
       } catch (error) {
          console.error('Error generating QR code:', error);
          alert('Terjadi kesalahan saat membuat QR code');
+      }
+   }
+
+   async function showSubjectSelectionModal(classId) {
+      try {
+         pendingClassId = classId;
+         const response = await fetch(`/api/attendance/subjects/${classId}`);
+
+         if (response.ok) {
+            const data = await response.json();
+            availableSubjects = data.subjects;
+
+            if (availableSubjects.length === 0) {
+               alert('Tidak ada mata pelajaran yang tersedia untuk absensi saat ini. Pastikan Anda memiliki jadwal mengajar hari ini.');
+               return;
+            }
+
+            showSubjectSelection = true;
+         } else {
+            const errorData = await response.json();
+            alert(errorData.error || 'Gagal mengambil data mata pelajaran');
+         }
+      } catch (error) {
+         console.error('Error getting subjects:', error);
+         alert('Terjadi kesalahan saat mengambil data mata pelajaran');
+      }
+   }
+
+   function closeSubjectSelection() {
+      showSubjectSelection = false;
+      availableSubjects = [];
+      selectedSubject = null;
+      pendingClassId = null;
+   }
+
+   function selectSubjectAndGenerate(subjectId) {
+      if (pendingClassId) {
+         generateQRCode(pendingClassId, subjectId);
       }
    }
    
@@ -565,7 +617,7 @@
                      <div class="space-y-4">
                         {#each classes.slice(0, 5) as cls}
                            <div class="group/item bg-gradient-to-r from-emerald-50 to-green-50 hover:from-emerald-100 hover:to-green-100 p-4 rounded-2xl border border-emerald-100 hover:border-emerald-200 transition-all duration-300 hover:shadow-md">
-                              <div class="flex items-center justify-between">
+                              <div class="flex items-center justify-between mb-2">
                                  <div class="flex-1">
                                     <p class="text-sm font-semibold text-gray-900 mb-1">{cls.name}</p>
                                     <p class="text-xs text-gray-600 flex items-center">
@@ -579,9 +631,25 @@
                                     Kelola
                                  </button>
                               </div>
+                              <!-- Mata Pelajaran yang Diampu -->
+                              {#if cls.subjects && cls.subjects.length > 0}
+                                 <div class="mt-2 space-y-1">
+                                    {#each cls.subjects.slice(0, 2) as subject}
+                                       <div class="flex items-center justify-between text-xs bg-white/50 rounded-lg px-2 py-1">
+                                          <span class="font-medium text-gray-700">{subject.name}</span>
+                                          <span class="text-gray-500">{subject.day} {subject.start_time}-{subject.end_time}</span>
+                                       </div>
+                                    {/each}
+                                    {#if cls.subjects.length > 2}
+                                       <div class="text-xs text-gray-500 text-center">+{cls.subjects.length - 2} mata pelajaran lainnya</div>
+                                    {/if}
+                                 </div>
+                              {:else}
+                                 <div class="mt-2 text-xs text-gray-500 italic">Belum ada mata pelajaran yang ditugaskan</div>
+                              {/if}
                            </div>
                         {:else}
-                           <p class="text-sm text-gray-500 text-center py-4">Belum ada kelas</p>
+                           <p class="text-sm text-gray-500 text-center py-4">Belum ada kelas yang ditugaskan</p>
                         {/each}
                      </div>
                      <div class="mt-6">
@@ -918,6 +986,41 @@
                                  <span class="text-gray-900 font-bold">{cls.max_students}</span>
                               </div>
                            </div>
+
+                           <!-- Mata Pelajaran yang Diampu -->
+                           {#if cls.subjects && cls.subjects.length > 0}
+                              <div class="mb-6">
+                                 <h5 class="text-sm font-semibold text-gray-700 mb-3 flex items-center">
+                                    <svg class="w-4 h-4 mr-2 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/>
+                                    </svg>
+                                    Mata Pelajaran
+                                 </h5>
+                                 <div class="space-y-2">
+                                    {#each cls.subjects as subject}
+                                       <div class="bg-gradient-to-r from-purple-50 to-pink-50 border border-purple-100 rounded-lg p-3">
+                                          <div class="flex justify-between items-start">
+                                             <div>
+                                                <p class="font-medium text-gray-900">{subject.name}</p>
+                                                <p class="text-xs text-gray-600">{subject.code}</p>
+                                             </div>
+                                             <div class="text-right">
+                                                <p class="text-sm font-medium text-purple-600">{subject.day}</p>
+                                                <p class="text-xs text-gray-500">{subject.start_time} - {subject.end_time}</p>
+                                             </div>
+                                          </div>
+                                          {#if subject.notes}
+                                             <p class="text-xs text-gray-500 mt-2 italic">{subject.notes}</p>
+                                          {/if}
+                                       </div>
+                                    {/each}
+                                 </div>
+                              </div>
+                           {:else}
+                              <div class="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+                                 <p class="text-sm text-yellow-700 text-center">Belum ada mata pelajaran yang ditugaskan untuk kelas ini</p>
+                              </div>
+                           {/if}
                            <div class="flex space-x-3">
                               <button class="flex-1 bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white py-3 px-4 rounded-xl text-sm font-semibold shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200 flex items-center justify-center space-x-2">
                                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -958,7 +1061,13 @@
       <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
          <div class="mt-3 text-center">
             <h3 class="text-lg leading-6 font-medium text-gray-900">QR Code Absensi</h3>
-            <p class="text-sm text-gray-500 mt-2">Kelas: {selectedClass?.name}</p>
+            <div class="mt-2 space-y-1">
+               <p class="text-sm text-gray-700 font-medium">Kelas: {selectedClass?.name}</p>
+               {#if selectedSubject}
+                  <p class="text-sm text-blue-600 font-medium">{selectedSubject.name} ({selectedSubject.code})</p>
+                  <p class="text-xs text-gray-500">{selectedSubject.day} • {selectedSubject.start_time} - {selectedSubject.end_time}</p>
+               {/if}
+            </div>
             <div class="mt-4 flex justify-center">
                <img src={qrCodeData.qrCodeDataURL} alt="QR Code" class="w-64 h-64">
             </div>
@@ -971,6 +1080,60 @@
                   on:click={closeQRCode}
                >
                   Tutup
+               </button>
+            </div>
+         </div>
+      </div>
+   </div>
+{/if}
+
+<!-- Subject Selection Modal -->
+{#if showSubjectSelection}
+   <div class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+      <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+         <div class="mt-3">
+            <div class="flex items-center justify-between mb-4">
+               <h3 class="text-lg font-medium text-gray-900">Pilih Mata Pelajaran</h3>
+               <button
+                  class="text-gray-400 hover:text-gray-600"
+                  on:click={closeSubjectSelection}
+               >
+                  <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                  </svg>
+               </button>
+            </div>
+
+            <p class="text-sm text-gray-600 mb-4">
+               Pilih mata pelajaran yang sedang Anda ajarkan untuk membuat QR code absensi:
+            </p>
+
+            <div class="space-y-3 max-h-60 overflow-y-auto">
+               {#each availableSubjects as subject}
+                  <button
+                     class="w-full text-left p-3 border border-gray-200 rounded-lg hover:bg-blue-50 hover:border-blue-300 transition-all duration-200"
+                     on:click={() => selectSubjectAndGenerate(subject.id)}
+                  >
+                     <div class="flex justify-between items-start">
+                        <div>
+                           <p class="font-medium text-gray-900">{subject.name}</p>
+                           <p class="text-sm text-gray-600">{subject.code}</p>
+                        </div>
+                        <div class="text-right">
+                           <p class="text-sm font-medium text-blue-600">{subject.day}</p>
+                           <p class="text-xs text-gray-500">{subject.start_time} - {subject.end_time}</p>
+                        </div>
+                     </div>
+                  </button>
+               {/each}
+            </div>
+
+            <div class="mt-4 pt-4 border-t border-gray-200">
+               <button
+                  class="w-full px-4 py-2 bg-gray-300 text-gray-700 text-sm font-medium rounded-md hover:bg-gray-400 transition-colors duration-200"
+                  on:click={closeSubjectSelection}
+               >
+                  Batal
                </button>
             </div>
          </div>

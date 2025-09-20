@@ -12,6 +12,7 @@ interface AttendanceSession {
    id: string;
    class_id: string;
    teacher_id: string;
+   subject_id?: string;
    attendance_date: string;
    qr_token: string;
    starts_at: Date;
@@ -31,39 +32,140 @@ interface AttendanceRecord {
 
 class AttendanceService {
    /**
-    * Generate QR code for attendance session
+    * Validate if teacher can generate QR code for specific class and subject at current time
     */
-   async generateQRCode(classId: string, teacherId: string, durationMinutes: number = 30): Promise<{ session: AttendanceSession, qrCodeDataURL: string }> {
-      const token = randomUUID();
-      const now = new Date();
-      const expiresAt = new Date(now.getTime() + durationMinutes * 60 * 1000);
+   async validateTeacherSchedule(teacherId: string, classId: string, subjectId?: string): Promise<{ valid: boolean, message: string, schedule?: any }> {
+      try {
+         const now = new Date();
+         const dayNames = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+         const currentDay = dayNames[now.getDay()];
+         const currentTime = now.toTimeString().slice(0, 5); // HH:MM format
 
-      const session = {
-         id: randomUUID(),
-         class_id: classId,
-         teacher_id: teacherId,
-         attendance_date: dayjs().format('YYYY-MM-DD'),
-         qr_token: token,
-         starts_at: now,
-         expires_at: expiresAt,
-         is_active: true,
-         created_at: dayjs().valueOf(),
-         updated_at: dayjs().valueOf()
-      };
+         // Check if teacher has any schedule for this class today
+         let query = DB.from('subject_classes as sc')
+            .join('classes as c', 'sc.class_id', 'c.id')
+            .join('subjects as s', 'sc.subject_id', 's.id')
+            .select(
+               'sc.*',
+               'c.name as class_name',
+               's.nama as subject_name',
+               's.kode as subject_code'
+            )
+            .where('sc.teacher_id', teacherId)
+            .where('sc.class_id', classId)
+            .where('sc.day', currentDay)
+            .where('sc.is_active', true);
 
-      await DB.table("attendance_sessions").insert(session);
+         // If specific subject is provided, validate it
+         if (subjectId) {
+            query = query.where('sc.subject_id', subjectId);
+         }
 
-      // Generate QR code data URL
-      const qrData = JSON.stringify({
-         token,
-         session_id: session.id,
-         class_id: classId,
-         timestamp: now.getTime()
-      });
+         const schedules = await query;
 
-      const qrCodeDataURL = await QRCode.toDataURL(qrData);
+         if (schedules.length === 0) {
+            return {
+               valid: false,
+               message: subjectId
+                  ? 'Anda tidak memiliki jadwal mengajar mata pelajaran ini di kelas ini hari ini'
+                  : 'Anda tidak memiliki jadwal mengajar di kelas ini hari ini'
+            };
+         }
 
-      return { session, qrCodeDataURL };
+         // Check if current time is within any teaching schedule
+         const activeSchedule = schedules.find(schedule => {
+            return currentTime >= schedule.start_time && currentTime <= schedule.end_time;
+         });
+
+         if (!activeSchedule) {
+            const nextSchedule = schedules.find(schedule => currentTime < schedule.start_time);
+            if (nextSchedule) {
+               return {
+                  valid: false,
+                  message: `Jadwal mengajar ${nextSchedule.subject_name} dimulai pada ${nextSchedule.start_time}. Saat ini belum waktunya.`
+               };
+            } else {
+               return {
+                  valid: false,
+                  message: 'Tidak ada jadwal mengajar yang aktif saat ini untuk kelas ini.'
+               };
+            }
+         }
+
+         return {
+            valid: true,
+            message: 'Validasi berhasil',
+            schedule: activeSchedule
+         };
+
+      } catch (error) {
+         console.error('Error validating teacher schedule:', error);
+         return {
+            valid: false,
+            message: 'Terjadi kesalahan saat memvalidasi jadwal'
+         };
+      }
+   }
+
+   /**
+    * Generate QR code for attendance session with schedule validation
+    */
+   async generateQRCode(classId: string, teacherId: string, subjectId?: string, durationMinutes: number = 30): Promise<{ success: boolean, session?: AttendanceSession, qrCodeDataURL?: string, message: string }> {
+      try {
+         // Validate teacher schedule
+         const validation = await this.validateTeacherSchedule(teacherId, classId, subjectId);
+         if (!validation.valid) {
+            return {
+               success: false,
+               message: validation.message
+            };
+         }
+
+         const token = randomUUID();
+         const now = new Date();
+         const expiresAt = new Date(now.getTime() + durationMinutes * 60 * 1000);
+
+         const session = {
+            id: randomUUID(),
+            class_id: classId,
+            teacher_id: teacherId,
+            subject_id: subjectId || validation.schedule?.subject_id,
+            attendance_date: dayjs().format('YYYY-MM-DD'),
+            qr_token: token,
+            starts_at: now,
+            expires_at: expiresAt,
+            is_active: true,
+            created_at: dayjs().valueOf(),
+            updated_at: dayjs().valueOf()
+         };
+
+         await DB.table("attendance_sessions").insert(session);
+
+         // Generate QR code data URL
+         const qrData = JSON.stringify({
+            token,
+            session_id: session.id,
+            class_id: classId,
+            subject_id: session.subject_id,
+            timestamp: now.getTime()
+         });
+
+         const qrCodeDataURL = await QRCode.toDataURL(qrData);
+
+         return {
+            success: true,
+            session,
+            qrCodeDataURL,
+            message: 'QR code berhasil dibuat'
+         };
+
+      } catch (error) {
+         console.error('Error generating QR code:', error);
+         return {
+            success: false,
+            message: 'Terjadi kesalahan saat membuat QR code'
+         };
+      }
    }
 
    /**
