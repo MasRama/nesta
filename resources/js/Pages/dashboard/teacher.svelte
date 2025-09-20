@@ -270,7 +270,6 @@
    .stagger-1 { animation-delay: 0.1s; }
    .stagger-2 { animation-delay: 0.2s; }
    .stagger-3 { animation-delay: 0.3s; }
-   .stagger-4 { animation-delay: 0.4s; }
 
    @keyframes fadeInUp {
       to {
@@ -361,8 +360,7 @@
             <div class="flex items-center space-x-6">
                <div class="flex items-center space-x-3">
                   <span class="text-white font-medium">Selamat datang, {user.name}</span>
-                  <img src={user.profile_image || '/images/default-avatar.png'} alt="Profile" class="h-10 w-10 rounded-full border-2 border-white/30">
-                  <button 
+                  <button
                      on:click={logout}
                      class="bg-white/10 hover:bg-white/20 text-white px-4 py-2 rounded-xl font-medium transition-all duration-200 backdrop-blur-sm border border-white/20 hover:border-white/30"
                   >
@@ -537,24 +535,7 @@
                   </div>
                </div>
 
-               <div class="group bg-gradient-to-br from-blue-500 to-blue-700 rounded-2xl shadow-xl hover:shadow-2xl stats-card-enhanced overflow-hidden relative fade-in-up stagger-4">
-                  <div class="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-                  <div class="relative p-6">
-                     <div class="flex items-center justify-between">
-                        <div class="flex-1">
-                           <div class="flex items-center space-x-3 mb-3">
-                              <div class="w-12 h-12 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center">
-                                 <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
-                                 </svg>
-                              </div>
-                           </div>
-                           <h3 class="text-white/80 text-sm font-medium mb-1">ID Guru</h3>
-                           <p class="text-3xl font-bold text-white">{user.teacher_id || '-'}</p>
-                        </div>
-                     </div>
-                  </div>
-               </div>
+
             </div>
 
             <!-- Modern Quick Actions -->
