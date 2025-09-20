@@ -2,6 +2,7 @@
    import { router } from '@inertiajs/svelte';
    import AdminHeader from '../../../Components/AdminHeader.svelte';
    import AdminNavigation from '../../../Components/AdminNavigation.svelte';
+   import { parentAPI, showToast, handleAPIError } from '../../../utils/api.js';
    
    export let user;
    export let errors = {};
@@ -96,20 +97,31 @@
       isSubmitted = true;
       errors = {};
 
-      router.post('/admin/parents', form, {
-         onSuccess: () => {
-            router.visit('/admin/parents');
-         },
-         onError: (validationErrors) => {
-            errors = validationErrors;
-            console.log('Validation errors:', validationErrors);
-            // Reset submitted flag on error so user can retry
-            isSubmitted = false;
-         },
-         onFinish: () => {
-            isLoading = false;
+      try {
+         const loadingToast = showToast.loading('Menambahkan wali murid...');
+
+         await parentAPI.create(form);
+
+         showToast.dismiss(loadingToast);
+         showToast.success('Wali murid berhasil ditambahkan');
+
+         // Redirect to parents list after successful creation
+         router.visit('/admin/parents');
+
+      } catch (error) {
+         console.error('Error creating parent:', error);
+
+         const errorResult = handleAPIError(error, 'Gagal menambahkan wali murid');
+
+         if (errorResult.type === 'validation' && errorResult.errors) {
+            errors = errorResult.errors;
          }
-      });
+
+         // Reset submitted flag on error so user can retry
+         isSubmitted = false;
+      } finally {
+         isLoading = false;
+      }
    }
    
    function goBack() {

@@ -95,6 +95,34 @@ export const teacherAPI = {
     }
 };
 
+// API methods for Parent CRUD operations
+export const parentAPI = {
+    // Get all parents with pagination and search
+    getAll: (params = {}) => {
+        return api.get('/api/parents', { params });
+    },
+
+    // Get single parent by ID (for edit form)
+    getById: (id) => {
+        return api.get(`/admin/parents/${id}/edit`);
+    },
+
+    // Create new parent
+    create: (data) => {
+        return api.post('/admin/parents', data);
+    },
+
+    // Update parent
+    update: (id, data) => {
+        return api.put(`/admin/parents/${id}`, data);
+    },
+
+    // Delete parent
+    delete: (id) => {
+        return api.delete(`/admin/parents/${id}`);
+    }
+};
+
 // Toast notification helpers
 export const showToast = {
     success: (message) => {

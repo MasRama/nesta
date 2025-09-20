@@ -93,7 +93,11 @@ class ParentController {
                 }
             }
 
-            return response.redirect("/admin/parents");
+            return response.status(201).json({
+                success: true,
+                message: 'Wali murid berhasil ditambahkan',
+                data: parent
+            });
         } catch (error: any) {
             console.error(`[${requestId}] Error creating parent:`, error);
             
@@ -104,7 +108,11 @@ class ParentController {
                         const existingParent = await ParentService.getParentByEmail(data.email);
                         if (existingParent) {
                             // Return success response for idempotent operation
-                            return response.redirect("/admin/parents");
+                            return response.status(201).json({
+                                success: true,
+                                message: 'Wali murid berhasil ditambahkan',
+                                data: existingParent
+                            });
                         }
                     } catch (checkError) {
                         console.error('Error checking existing parent:', checkError);
@@ -217,8 +225,12 @@ class ParentController {
                 });
             }
             
-            await ParentService.updateParent(id, data);
-            return response.redirect("/admin/parents");
+            const updatedParent = await ParentService.updateParent(id, data);
+            return response.status(200).json({
+                success: true,
+                message: 'Data wali murid berhasil diperbarui',
+                data: updatedParent
+            });
         } catch (error) {
             console.error('Error updating parent:', error);
             return response.status(500).json({ error: 'Gagal mengupdate wali murid' });

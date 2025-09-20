@@ -2,33 +2,61 @@
    import { router } from '@inertiajs/svelte';
    import AdminHeader from '../../../Components/AdminHeader.svelte';
    import AdminNavigation from '../../../Components/AdminNavigation.svelte';
+   import { parentAPI, showToast } from '../../../utils/api.js';
+   import { onMount } from 'svelte';
 
-   export let parents = [];
-   export let total = 0;
-   export let page = 1;
-   export let limit = 10;
-   export let totalPages = 1;
-   export let filters = {};
    export let user;
-   
+
+   // Local state for data management
+   let parents = [];
+   let total = 0;
+   let page = 1;
+   let limit = 10;
+   let totalPages = 1;
+   let searchQuery = '';
    let isLoading = false;
-   let searchQuery = filters.search || '';
    let currentSection = 'parents'; // Tab navigation state
-   
-   function handleSearch() {
-      const params = new URLSearchParams();
-      if (searchQuery) params.set('search', searchQuery);
-      params.set('page', '1');
-      
-      router.visit(`/admin/parents?${params.toString()}`);
+
+   // Load parents data on component mount
+   onMount(() => {
+      loadParents();
+   });
+
+   // Function to load parents data via API
+   async function loadParents() {
+      try {
+         isLoading = true;
+         const params = {
+            page,
+            limit,
+            search: searchQuery || undefined
+         };
+
+         const response = await parentAPI.getAll(params);
+         const result = response.data;
+
+         parents = result.data || [];
+         total = result.pagination?.total || 0;
+         totalPages = result.pagination?.totalPages || 1;
+
+      } catch (error) {
+         console.error('Error loading parents:', error);
+         showToast.error('Gagal memuat data wali murid');
+      } finally {
+         isLoading = false;
+      }
    }
-   
-   function handlePageChange(newPage) {
-      const params = new URLSearchParams();
-      if (searchQuery) params.set('search', searchQuery);
-      params.set('page', newPage.toString());
-      
-      router.visit(`/admin/parents?${params.toString()}`);
+
+   // Handle search with real-time data refresh
+   async function handleSearch() {
+      page = 1; // Reset to first page
+      await loadParents();
+   }
+
+   // Handle pagination with real-time data refresh
+   async function handlePageChange(newPage) {
+      page = newPage;
+      await loadParents();
    }
    
    function createParent() {
@@ -43,13 +71,24 @@
       router.visit(`/admin/parents/${id}/edit`);
    }
    
-   function deleteParent(id, name) {
+   // Delete parent with axios and real-time refresh
+   async function deleteParent(id, name) {
       if (confirm(`Apakah Anda yakin ingin menghapus wali murid "${name}"?`)) {
-         router.delete(`/admin/parents/${id}`, {
-            onSuccess: () => {
-               router.reload();
-            }
-         });
+         try {
+            const loadingToast = showToast.loading('Menghapus wali murid...');
+
+            await parentAPI.delete(id);
+
+            showToast.dismiss(loadingToast);
+            showToast.success('Wali murid berhasil dihapus');
+
+            // Refresh data after successful deletion
+            await loadParents();
+
+         } catch (error) {
+            console.error('Error deleting parent:', error);
+            showToast.error('Gagal menghapus wali murid');
+         }
       }
    }
    

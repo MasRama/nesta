@@ -2,6 +2,7 @@
    import { router } from '@inertiajs/svelte';
    import AdminHeader from '../../../Components/AdminHeader.svelte';
    import AdminNavigation from '../../../Components/AdminNavigation.svelte';
+   import { parentAPI, showToast } from '../../../utils/api.js';
 
    export let parent;
    export let students = [];
@@ -17,13 +18,23 @@
       router.visit(`/admin/parents/${parent.id}/edit`);
    }
    
-   function deleteParent() {
+   async function deleteParent() {
       if (confirm(`Apakah Anda yakin ingin menghapus wali murid "${parent.nama}"?`)) {
-         router.delete(`/admin/parents/${parent.id}`, {
-            onSuccess: () => {
-               router.visit('/admin/parents');
-            }
-         });
+         try {
+            const loadingToast = showToast.loading('Menghapus wali murid...');
+
+            await parentAPI.delete(parent.id);
+
+            showToast.dismiss(loadingToast);
+            showToast.success('Wali murid berhasil dihapus');
+
+            // Redirect to parents list after successful deletion
+            router.visit('/admin/parents');
+
+         } catch (error) {
+            console.error('Error deleting parent:', error);
+            showToast.error('Gagal menghapus wali murid');
+         }
       }
    }
    

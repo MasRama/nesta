@@ -2,6 +2,7 @@
    import { router } from '@inertiajs/svelte';
    import AdminHeader from '../../../Components/AdminHeader.svelte';
    import AdminNavigation from '../../../Components/AdminNavigation.svelte';
+   import { parentAPI, showToast, handleAPIError } from '../../../utils/api.js';
    
    export let parent;
    export let students = [];
@@ -134,26 +135,37 @@
       isSubmitted = true;
       errors = {};
 
-      // Only include password if it's not empty
-      const submitData = { ...form };
-      if (!submitData.password) {
-         delete submitData.password;
-      }
-
-      router.put(`/admin/parents/${parent.id}`, submitData, {
-         onSuccess: () => {
-            router.visit('/admin/parents');
-         },
-         onError: (validationErrors) => {
-            errors = validationErrors;
-            console.log('Validation errors:', validationErrors);
-            // Reset submitted flag on error so user can retry
-            isSubmitted = false;
-         },
-         onFinish: () => {
-            isLoading = false;
+      try {
+         // Only include password if it's not empty
+         const submitData = { ...form };
+         if (!submitData.password) {
+            delete submitData.password;
          }
-      });
+
+         const loadingToast = showToast.loading('Memperbarui data wali murid...');
+
+         await parentAPI.update(parent.id, submitData);
+
+         showToast.dismiss(loadingToast);
+         showToast.success('Data wali murid berhasil diperbarui');
+
+         // Redirect to parents list after successful update
+         router.visit('/admin/parents');
+
+      } catch (error) {
+         console.error('Error updating parent:', error);
+
+         const errorResult = handleAPIError(error, 'Gagal memperbarui data wali murid');
+
+         if (errorResult.type === 'validation' && errorResult.errors) {
+            errors = errorResult.errors;
+         }
+
+         // Reset submitted flag on error so user can retry
+         isSubmitted = false;
+      } finally {
+         isLoading = false;
+      }
    }
    
    function goBack() {
