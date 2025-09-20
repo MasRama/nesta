@@ -476,7 +476,7 @@
       {#if currentSection === 'overview'}
          <!-- Overview Section -->
          <div class="px-4 py-6 sm:px-0">
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 mb-12">
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-8 mb-12">
                <!-- Modern Material Design Stats Cards -->
                <div class="group bg-gradient-to-br from-green-500 to-emerald-600 rounded-2xl shadow-xl hover:shadow-2xl stats-card-enhanced overflow-hidden relative fade-in-up stagger-1">
                   <div class="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
@@ -490,8 +490,8 @@
                                  </svg>
                               </div>
                            </div>
-                           <h3 class="text-white/80 text-sm font-medium mb-1">Status Jadwal</h3>
-                           <p class="text-3xl font-bold text-white">{currentSchedule.hasActiveSchedule ? '1' : '0'}</p>
+                           <h3 class="text-white/80 text-sm font-medium mb-1">Total Jadwal Mingguan</h3>
+                           <p class="text-3xl font-bold text-white">{weeklySchedule.reduce((total, day) => total + day.schedules.length, 0)}</p>
                         </div>
                      </div>
                   </div>
@@ -517,6 +517,29 @@
                </div>
 
                <div class="group bg-gradient-to-br from-indigo-500 to-indigo-700 rounded-2xl shadow-xl hover:shadow-2xl stats-card-enhanced overflow-hidden relative fade-in-up stagger-3">
+                  <div class="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                  <div class="relative p-6">
+                     <div class="flex items-center justify-between">
+                        <div class="flex-1">
+                           <div class="flex items-center space-x-3 mb-3">
+                              <div class="w-12 h-12 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center">
+                                 <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                 </svg>
+                              </div>
+                           </div>
+                           <h3 class="text-white/80 text-sm font-medium mb-1">Jadwal Hari Ini</h3>
+                           <p class="text-3xl font-bold text-white">{weeklySchedule.find(day => {
+                              const today = new Date();
+                              const dayNames = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+                              return day.day === dayNames[today.getDay()];
+                           })?.schedules.length || 0}</p>
+                        </div>
+                     </div>
+                  </div>
+               </div>
+
+               <div class="group bg-gradient-to-br from-purple-500 to-purple-700 rounded-2xl shadow-xl hover:shadow-2xl stats-card-enhanced overflow-hidden relative fade-in-up stagger-4">
                   <div class="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
                   <div class="relative p-6">
                      <div class="flex items-center justify-between">
