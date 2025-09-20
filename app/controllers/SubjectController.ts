@@ -61,10 +61,14 @@ class SubjectController {
             }
 
             console.log(`[${requestId}] Calling SubjectService.createSubject`);
-            await SubjectService.createSubject(data);
+            const newSubject = await SubjectService.createSubject(data);
             console.log(`[${requestId}] Subject created successfully`);
 
-            return response.redirect("/admin/subjects");
+            return response.status(201).json({
+                success: true,
+                message: 'Mata pelajaran berhasil ditambahkan',
+                data: newSubject
+            });
         } catch (error: any) {
             console.error(`[${requestId}] Error creating subject:`, error);
 
@@ -76,7 +80,11 @@ class SubjectController {
                         const existingSubject = await SubjectService.getSubjectByCode(data.kode);
                         if (existingSubject) {
                             // Return success response for idempotent operation
-                            return response.redirect("/admin/subjects");
+                            return response.status(201).json({
+                                success: true,
+                                message: 'Mata pelajaran berhasil ditambahkan',
+                                data: existingSubject
+                            });
                         }
                     } catch (checkError) {
                         console.error('Error checking existing subject:', checkError);
@@ -165,8 +173,12 @@ class SubjectController {
                 }
             }
             
-            await SubjectService.updateSubject(id, data);
-            return response.redirect("/admin/subjects");
+            const updatedSubject = await SubjectService.updateSubject(id, data);
+            return response.status(200).json({
+                success: true,
+                message: 'Data mata pelajaran berhasil diperbarui',
+                data: updatedSubject
+            });
         } catch (error) {
             console.error('Error updating subject:', error);
             return response.status(500).json({ error: 'Gagal memperbarui mata pelajaran' });
@@ -186,7 +198,10 @@ class SubjectController {
             }
             
             await SubjectService.deleteSubject(id);
-            return response.redirect("/admin/subjects");
+            return response.json({
+                success: true,
+                message: 'Mata pelajaran berhasil dihapus'
+            });
         } catch (error) {
             console.error('Error deleting subject:', error);
             return response.status(500).json({ error: 'Gagal menghapus mata pelajaran' });

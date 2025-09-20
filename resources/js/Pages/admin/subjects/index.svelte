@@ -2,6 +2,7 @@
    import { router } from '@inertiajs/svelte';
    import AdminHeader from '../../../Components/AdminHeader.svelte';
    import AdminNavigation from '../../../Components/AdminNavigation.svelte';
+   import { subjectAPI, showToast, handleAPIError } from '../../../utils/api.js';
 
    export let subjects = [];
    export let total = 0;
@@ -293,13 +294,23 @@
       }
    }
    
-   function deleteSubject(id, name) {
+   async function deleteSubject(id, name) {
       if (confirm(`Apakah Anda yakin ingin menghapus mata pelajaran "${name}"?`)) {
-         router.delete(`/admin/subjects/${id}`, {
-            onSuccess: () => {
-               router.reload();
-            }
-         });
+         try {
+            const loadingToast = showToast.loading('Menghapus mata pelajaran...');
+
+            await subjectAPI.delete(id);
+
+            showToast.dismiss(loadingToast);
+            showToast.success('Mata pelajaran berhasil dihapus');
+
+            // Reload the page to refresh data
+            router.reload();
+
+         } catch (error) {
+            console.error('Error deleting subject:', error);
+            handleAPIError(error, 'Gagal menghapus mata pelajaran');
+         }
       }
    }
 </script>

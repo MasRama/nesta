@@ -123,6 +123,34 @@ export const parentAPI = {
     }
 };
 
+// API methods for Subject CRUD operations
+export const subjectAPI = {
+    // Get all subjects with pagination and search
+    getAll: (params = {}) => {
+        return api.get('/api/subjects', { params });
+    },
+
+    // Get single subject by ID (for edit form)
+    getById: (id) => {
+        return api.get(`/admin/subjects/${id}/edit`);
+    },
+
+    // Create new subject
+    create: (data) => {
+        return api.post('/admin/subjects', data);
+    },
+
+    // Update subject
+    update: (id, data) => {
+        return api.put(`/admin/subjects/${id}`, data);
+    },
+
+    // Delete subject
+    delete: (id) => {
+        return api.delete(`/admin/subjects/${id}`);
+    }
+};
+
 // Toast notification helpers
 export const showToast = {
     success: (message) => {

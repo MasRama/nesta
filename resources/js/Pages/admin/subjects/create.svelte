@@ -1,5 +1,6 @@
 <script>
    import { router } from '@inertiajs/svelte';
+   import { subjectAPI, showToast, handleAPIError } from '../../../utils/api.js';
 
    export let user;
    export let errors = {};
@@ -24,20 +25,31 @@
       isSubmitted = true;
       errors = {};
 
-      router.post('/admin/subjects', form, {
-         onSuccess: () => {
-            router.visit('/admin/subjects');
-         },
-         onError: (validationErrors) => {
-            errors = validationErrors;
-            console.log('Validation errors:', validationErrors);
-            // Reset submitted flag on error so user can retry
-            isSubmitted = false;
-         },
-         onFinish: () => {
-            isLoading = false;
+      try {
+         const loadingToast = showToast.loading('Menambahkan mata pelajaran...');
+
+         await subjectAPI.create(form);
+
+         showToast.dismiss(loadingToast);
+         showToast.success('Mata pelajaran berhasil ditambahkan');
+
+         // Redirect to subjects list after successful creation
+         router.visit('/admin/subjects');
+
+      } catch (error) {
+         console.error('Error creating subject:', error);
+
+         const errorResult = handleAPIError(error, 'Gagal menambahkan mata pelajaran');
+
+         if (errorResult.type === 'validation' && errorResult.errors) {
+            errors = errorResult.errors;
          }
-      });
+
+         // Reset submitted flag on error so user can retry
+         isSubmitted = false;
+      } finally {
+         isLoading = false;
+      }
    }
    
    function goBack() {

@@ -1,5 +1,6 @@
 <script>
    import { router } from '@inertiajs/svelte';
+   import { subjectAPI, showToast, handleAPIError } from '../../../utils/api.js';
    
    export let subject;
    export let user;
@@ -12,101 +13,40 @@
    
    let errors = {};
    let isSubmitting = false;
-    let lastSubmitTime = 0;
-    let currentRequestId = null;
-   let showToast = false;
-   let toastMessage = '';
-   let toastType = 'success'; // 'success' or 'error'
-   
-   function showToastMessage(message, type = 'success') {
-      toastMessage = message;
-      toastType = type;
-      showToast = true;
-      setTimeout(() => {
-         showToast = false;
-      }, 3000);
-   }
    
    async function handleSubmit() {
-      const now = Date.now();
-      
       // Prevent double submission
       if (isSubmitting) {
          console.log('Form already submitting, ignoring duplicate request');
          return;
       }
-      
-      // Prevent double submission dengan debounce (2 detik)
-      const timeDiff = now - lastSubmitTime;
-      if (timeDiff < 2000) {
-         console.log(`Submission terlalu cepat (${timeDiff}ms), diabaikan. Tunggu ${2000 - timeDiff}ms lagi.`);
-         showToastMessage('Tunggu sebentar sebelum submit lagi', 'error');
-         return;
-      }
-      lastSubmitTime = now;
-        console.log('Debounce check passed, proceeding with submission');
-        
-        // Generate unique request ID untuk mencegah race condition
-        const requestId = Date.now() + '-' + Math.random().toString(36).substr(2, 9);
-        currentRequestId = requestId;
-        console.log('Starting request with ID:', requestId);
-        
-        isSubmitting = true;
-        errors = {};
-      
+
+      isSubmitting = true;
+      errors = {};
+
       try {
-         const response = await fetch(`/admin/subjects/${subject.id}`, {
-            method: 'PUT',
-            headers: {
-               'Content-Type': 'application/json',
-               'X-Inertia': 'true'
-            },
-            body: JSON.stringify(formData)
-         });
-         
-         const result = await response.json();
-         
-         // Cek apakah ini masih request yang aktif
-         if (currentRequestId !== requestId) {
-            console.log('Request sudah tidak aktif, mengabaikan response untuk ID:', requestId);
-            return;
-         }
-         
-         if (response.ok) {
-            console.log('Request berhasil untuk ID:', requestId);
-            showToastMessage('Data mata pelajaran berhasil diperbarui!', 'success');
-            setTimeout(() => {
-               if (currentRequestId === requestId) {
-                  router.visit('/admin/subjects');
-               }
-            }, 1500);
-         } else {
-            console.log('Request gagal untuk ID:', requestId, result);
-            if (result.errors) {
-               result.errors.forEach(error => {
-                  errors[error.field] = error.message;
-               });
-               showToastMessage('Mohon periksa kembali data yang dimasukkan', 'error');
-            } else {
-               showToastMessage(result.error || 'Terjadi kesalahan saat memperbarui data', 'error');
-            }
-         }
+         const loadingToast = showToast.loading('Memperbarui mata pelajaran...');
+
+         await subjectAPI.update(subject.id, formData);
+
+         showToast.dismiss(loadingToast);
+         showToast.success('Data mata pelajaran berhasil diperbarui');
+
+         // Redirect to subjects list after successful update
+         setTimeout(() => {
+            router.visit('/admin/subjects');
+         }, 1500);
+
       } catch (error) {
-         // Cek apakah ini masih request yang aktif
-         if (currentRequestId !== requestId) {
-            console.log('Request sudah tidak aktif, mengabaikan error untuk ID:', requestId);
-            return;
+         console.error('Error updating subject:', error);
+
+         const errorResult = handleAPIError(error, 'Gagal memperbarui mata pelajaran');
+
+         if (errorResult.type === 'validation' && errorResult.errors) {
+            errors = errorResult.errors;
          }
-         
-         console.error('Network error untuk request ID:', requestId, error);
-         showToastMessage('Terjadi kesalahan jaringan', 'error');
       } finally {
-         // Reset state hanya jika ini masih request yang aktif
-         if (currentRequestId === requestId) {
-            isSubmitting = false;
-            currentRequestId = null;
-            console.log('Request selesai untuk ID:', requestId);
-         }
+         isSubmitting = false;
       }
    }
    
@@ -277,24 +217,6 @@
          </form>
       </div>
    </main>
-   
-   <!-- Toast Notification -->
-   {#if showToast}
-      <div class="fixed top-4 right-4 z-50 transition-all duration-300 ease-in-out transform {showToast ? 'translate-x-0 opacity-100' : 'translate-x-full opacity-0'}">
-         <div class="flex items-center p-4 rounded-lg shadow-lg {toastType === 'success' ? 'bg-green-500 text-white' : 'bg-red-500 text-white'}">
-            {#if toastType === 'success'}
-               <svg class="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                  <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
-               </svg>
-            {:else}
-               <svg class="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                  <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
-               </svg>
-            {/if}
-            <span>{toastMessage}</span>
-         </div>
-      </div>
-   {/if}
 </div>
 
 <style>
