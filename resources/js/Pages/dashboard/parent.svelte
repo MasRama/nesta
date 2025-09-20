@@ -187,9 +187,9 @@
    }
 </style>
 
-<div class="min-h-screen bg-gradient-to-br from-slate-50 via-purple-50 to-indigo-100">
+<div class="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100">
    <!-- Modern Material Design Header -->
-   <header class="bg-gradient-to-r from-purple-600 via-purple-700 to-indigo-800 shadow-xl relative overflow-hidden header-enhanced backdrop-blur-enhanced">
+   <header class="bg-gradient-to-r from-blue-600 via-blue-700 to-indigo-800 shadow-xl relative overflow-hidden header-enhanced backdrop-blur-enhanced">
       <div class="absolute inset-0 opacity-10">
          <div class="absolute top-0 left-0 w-full h-full">
             <svg width="60" height="60" viewBox="0 0 60 60" xmlns="http://www.w3.org/2000/svg">
@@ -212,7 +212,7 @@
                </div>
                <div>
                   <h1 class="text-2xl font-bold text-white">Dashboard Orang Tua</h1>
-                  <p class="text-purple-100 text-sm">Portal Akademik NETSA</p>
+                  <p class="text-blue-100 text-sm">Portal Akademik NETSA</p>
                </div>
             </div>
             <div class="flex items-center space-x-6">
@@ -233,14 +233,14 @@
 
    <!-- Child Selector -->
    {#if children.length > 1}
-      <div class="bg-gradient-to-r from-purple-500 to-indigo-600 text-white backdrop-blur-enhanced">
+      <div class="bg-gradient-to-r from-blue-500 to-indigo-600 text-white backdrop-blur-enhanced">
          <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="py-4">
-               <span class="text-sm font-medium mr-4 text-purple-100">Pilih Anak:</span>
+               <span class="text-sm font-medium mr-4 text-blue-100">Pilih Anak:</span>
                <div class="inline-flex space-x-3">
                   {#each children as child}
                      <button 
-                        class="px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200 nav-btn-enhanced backdrop-blur-sm border {selectedChild?.id === child.id ? 'bg-white/20 border-white/30 text-white' : 'bg-white/10 border-white/20 text-purple-100 hover:bg-white/15'}"
+                        class="px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200 nav-btn-enhanced backdrop-blur-sm border {selectedChild?.id === child.id ? 'bg-white/20 border-white/30 text-white' : 'bg-white/10 border-white/20 text-blue-100 hover:bg-white/15'}"
                         on:click={() => selectChild(child)}
                      >
                         {child.name}
@@ -373,7 +373,7 @@
                                  <span class="text-lg font-bold text-purple-600">{getAttendancePercentage(child.id)}%</span>
                               </div>
                               <div class="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
-                                 <div class="bg-gradient-to-r from-purple-500 to-indigo-600 h-3 rounded-full progress-bar" style="width: {getAttendancePercentage(child.id)}%"></div>
+                                 <div class="bg-gradient-to-r from-blue-500 to-indigo-600 h-3 rounded-full progress-bar" style="width: {getAttendancePercentage(child.id)}%"></div>
                               </div>
                               
                               <div class="grid grid-cols-2 gap-3 mt-4">
@@ -416,7 +416,7 @@
                                  {/if}
                               {/each}
                            </div>
-                           <div class="mt-6 p-6 bg-gradient-to-r from-purple-500/10 to-indigo-500/10 rounded-2xl border border-purple-200/50">
+                           <div class="mt-6 p-6 bg-gradient-to-r from-blue-500/10 to-indigo-500/10 rounded-2xl border border-blue-200/50">
                               <div class="flex justify-between items-center">
                                  <span class="text-lg font-bold text-gray-900 flex items-center">
                                     <svg class="w-5 h-5 text-purple-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -427,7 +427,7 @@
                                  <span class="text-2xl font-bold text-purple-600">{getAttendancePercentage(selectedChild.id)}%</span>
                               </div>
                               <div class="mt-3 bg-gray-200 rounded-full h-3 overflow-hidden">
-                                 <div class="progress-bar bg-gradient-to-r from-purple-500 to-indigo-600 h-full rounded-full transition-all duration-1000 ease-out" style="width: {getAttendancePercentage(selectedChild.id)}%"></div>
+                                 <div class="progress-bar bg-gradient-to-r from-blue-500 to-indigo-600 h-full rounded-full transition-all duration-1000 ease-out" style="width: {getAttendancePercentage(selectedChild.id)}%"></div>
                               </div>
                            </div>
                         </div>
@@ -466,7 +466,7 @@
                               </div>
                               <div class="group bg-white/70 backdrop-blur-sm rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all duration-300 border border-white/50 fade-in-up stagger-3">
                                  <div class="flex items-center mb-3">
-                                    <div class="w-4 h-4 bg-gradient-to-r from-purple-500 to-indigo-500 rounded-full mr-3"></div>
+                                    <div class="w-4 h-4 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-full mr-3"></div>
                                     <h4 class="text-lg font-bold text-gray-900">Hubungan</h4>
                                  </div>
                                  <p class="text-xl font-semibold text-purple-600 ml-7 capitalize">{selectedChild.relationship}</p>
@@ -501,9 +501,9 @@
                      </div>
                      
                      <!-- Monthly Summary -->
-                     <div class="mb-8 p-6 bg-gradient-to-r from-purple-500/10 to-indigo-500/10 rounded-2xl border border-purple-200/50">
+                     <div class="mb-8 p-6 bg-gradient-to-r from-blue-500/10 to-indigo-500/10 rounded-2xl border border-blue-200/50">
                         <h4 class="text-lg font-bold text-gray-900 mb-6 flex items-center">
-                           <svg class="w-5 h-5 text-purple-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                           <svg class="w-5 h-5 text-blue-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3a2 2 0 012-2h4a2 2 0 012 2v4m-6 0V6a2 2 0 012-2h4a2 2 0 012 2v1m-6 0h8m-8 0l1 12a2 2 0 002 2h6a2 2 0 002-2l1-12m-8 0V9a2 2 0 012-2h4a2 2 0 012 2v0"/>
                            </svg>
                            Ringkasan Bulan Ini
@@ -524,8 +524,8 @@
 
                      <!-- Modern Attendance Details -->
                      {#if attendanceData && attendanceData.find(data => data.child_id === selectedChild.id)?.attendance_records}
-                        <div class="bg-white/70 backdrop-blur-sm rounded-2xl shadow-xl border border-purple-100/50 overflow-hidden fade-in-up">
-                           <div class="bg-gradient-to-r from-purple-500 to-indigo-600 px-6 py-4">
+                        <div class="bg-white/70 backdrop-blur-sm rounded-2xl shadow-xl border border-blue-100/50 overflow-hidden fade-in-up">
+                           <div class="bg-gradient-to-r from-blue-500 to-indigo-600 px-6 py-4">
                               <h4 class="text-lg font-bold text-white flex items-center">
                                  <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 8l2 2 4-4"/>
@@ -579,8 +579,8 @@
                            </div>
                         </div>
                      {:else}
-                        <div class="text-center py-12 bg-gradient-to-br from-white to-purple-50/30 rounded-2xl border border-purple-100/50 fade-in-up">
-                           <div class="mx-auto w-16 h-16 bg-gradient-to-r from-purple-500 to-indigo-600 rounded-2xl flex items-center justify-center mb-4 shadow-lg">
+                        <div class="text-center py-12 bg-gradient-to-br from-white to-blue-50/30 rounded-2xl border border-blue-100/50 fade-in-up">
+                           <div class="mx-auto w-16 h-16 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-2xl flex items-center justify-center mb-4 shadow-lg">
                               <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
                               </svg>
@@ -621,8 +621,8 @@
                         </div>
                      </div>
                      
-                     <div class="text-center py-16 bg-gradient-to-r from-purple-500/10 to-indigo-500/10 rounded-2xl border border-purple-200/50 fade-in-up stagger-2">
-                        <div class="mx-auto w-20 h-20 bg-gradient-to-r from-purple-500 to-indigo-600 rounded-3xl flex items-center justify-center mb-6 shadow-xl">
+                     <div class="text-center py-16 bg-gradient-to-r from-blue-500/10 to-indigo-500/10 rounded-2xl border border-blue-200/50 fade-in-up stagger-2">
+                        <div class="mx-auto w-20 h-20 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-3xl flex items-center justify-center mb-6 shadow-xl">
                            <svg class="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/>
                            </svg>
@@ -713,15 +713,15 @@
                            Pesan dari Guru
                         </h4>
                         <div class="space-y-4">
-                           <div class="bg-gradient-to-r from-purple-50 to-indigo-50 p-4 rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 border border-purple-100 fade-in-up stagger-6">
-                              <p class="text-sm font-bold text-purple-900 mb-1">Bu Sari - Wali Kelas</p>
+                           <div class="bg-gradient-to-r from-blue-50 to-indigo-50 p-4 rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 border border-blue-100 fade-in-up stagger-6">
+                              <p class="text-sm font-bold text-blue-900 mb-1">Bu Sari - Wali Kelas</p>
                               <p class="text-sm text-gray-700 mb-2">Anak Anda menunjukkan progress yang baik dalam matematika</p>
-                              <p class="text-xs text-purple-600 font-medium">1 hari yang lalu</p>
+                              <p class="text-xs text-blue-600 font-medium">1 hari yang lalu</p>
                            </div>
-                           <div class="bg-gradient-to-r from-purple-50 to-indigo-50 p-4 rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 border border-purple-100 fade-in-up stagger-7">
-                              <p class="text-sm font-bold text-purple-900 mb-1">Pak Budi - Guru Olahraga</p>
+                           <div class="bg-gradient-to-r from-blue-50 to-indigo-50 p-4 rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 border border-blue-100 fade-in-up stagger-7">
+                              <p class="text-sm font-bold text-blue-900 mb-1">Pak Budi - Guru Olahraga</p>
                               <p class="text-sm text-gray-700 mb-2">Jangan lupa bawa perlengkapan olahraga besok</p>
-                              <p class="text-xs text-purple-600 font-medium">3 hari yang lalu</p>
+                              <p class="text-xs text-blue-600 font-medium">3 hari yang lalu</p>
                            </div>
                         </div>
                      </div>
@@ -736,20 +736,20 @@
                         Kontak Sekolah
                      </h4>
                      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                        <div class="flex items-center bg-white/70 backdrop-blur-sm p-4 rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 border border-purple-100 fade-in-up stagger-9">
-                           <div class="w-10 h-10 bg-gradient-to-r from-purple-500 to-indigo-600 rounded-xl flex items-center justify-center mr-3">
+                        <div class="flex items-center bg-white/70 backdrop-blur-sm p-4 rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 border border-blue-100 fade-in-up stagger-9">
+                           <div class="w-10 h-10 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center mr-3">
                               <span class="text-white text-lg">📞</span>
                            </div>
                            <span class="font-medium text-gray-900">+62 21 12345678</span>
                         </div>
-                        <div class="flex items-center bg-white/70 backdrop-blur-sm p-4 rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 border border-purple-100 fade-in-up stagger-10">
-                           <div class="w-10 h-10 bg-gradient-to-r from-purple-500 to-indigo-600 rounded-xl flex items-center justify-center mr-3">
+                        <div class="flex items-center bg-white/70 backdrop-blur-sm p-4 rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 border border-blue-100 fade-in-up stagger-10">
+                           <div class="w-10 h-10 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center mr-3">
                               <span class="text-white text-lg">✉️</span>
                            </div>
                            <span class="font-medium text-gray-900">info@netsa.school.id</span>
                         </div>
-                        <div class="flex items-center bg-white/70 backdrop-blur-sm p-4 rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 border border-purple-100 fade-in-up stagger-1">
-                           <div class="w-10 h-10 bg-gradient-to-r from-purple-500 to-indigo-600 rounded-xl flex items-center justify-center mr-3">
+                        <div class="flex items-center bg-white/70 backdrop-blur-sm p-4 rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 border border-blue-100 fade-in-up stagger-1">
+                           <div class="w-10 h-10 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center mr-3">
                               <span class="text-white text-lg">📍</span>
                            </div>
                            <span class="font-medium text-gray-900">Jl. Pendidikan No. 123, Jakarta</span>

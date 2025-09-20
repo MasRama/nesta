@@ -90,7 +90,7 @@
    <title>Dashboard Admin - NETSA</title>
 </svelte:head>
 
-<div class="min-h-screen bg-gradient-to-br from-slate-50 via-red-50 to-rose-100 transition-colors duration-300">
+<div class="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 transition-colors duration-300">
    <AdminHeader {user} />
    <AdminNavigation {currentSection} />
 
@@ -150,7 +150,7 @@
                   </div>
                </div>
 
-               <div class="stats-card-enhanced bg-gradient-to-br from-purple-500 to-pink-600 text-white rounded-2xl shadow-xl fade-in-up stagger-3">
+               <div class="stats-card-enhanced bg-gradient-to-br from-indigo-500 to-indigo-600 text-white rounded-2xl shadow-xl fade-in-up stagger-3">
                   <div class="p-6">
                      <div class="flex items-center justify-between">
                         <div>
@@ -172,7 +172,7 @@
                   </div>
                </div>
 
-               <div class="stats-card-enhanced bg-gradient-to-br from-orange-500 to-red-600 text-white rounded-2xl shadow-xl fade-in-up stagger-4">
+               <div class="stats-card-enhanced bg-gradient-to-br from-blue-500 to-blue-600 text-white rounded-2xl shadow-xl fade-in-up stagger-4">
                   <div class="p-6">
                      <div class="flex items-center justify-between">
                         <div>
@@ -199,7 +199,7 @@
             <div class="content-card-enhanced bg-white/80 backdrop-blur-md shadow-2xl rounded-3xl border border-white/20 fade-in-up">
                <div class="px-8 py-8">
                   <div class="flex items-center mb-6">
-                     <div class="w-12 h-12 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-2xl flex items-center justify-center mr-4">
+                     <div class="w-12 h-12 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl flex items-center justify-center mr-4">
                         <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z"/>
                         </svg>
@@ -232,27 +232,27 @@
                         </div>
                         <dd class="text-lg font-bold text-green-800">SQLite3 + Knex</dd>
                      </div>
-                     <div class="bg-gradient-to-br from-purple-50 to-pink-100 rounded-2xl p-6 border border-purple-200/50">
+                     <div class="bg-gradient-to-br from-indigo-50 to-indigo-100 rounded-2xl p-6 border border-indigo-200/50">
                         <div class="flex items-center mb-3">
-                           <div class="w-8 h-8 bg-purple-500 rounded-xl flex items-center justify-center mr-3">
+                           <div class="w-8 h-8 bg-indigo-500 rounded-xl flex items-center justify-center mr-3">
                               <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
                               </svg>
                            </div>
                            <dt class="text-sm font-semibold text-purple-900">Frontend</dt>
                         </div>
-                        <dd class="text-lg font-bold text-purple-800">Svelte 5 + Inertia.js</dd>
+                        <dd class="text-lg font-bold text-indigo-800">Svelte 5 + Inertia.js</dd>
                      </div>
-                     <div class="bg-gradient-to-br from-orange-50 to-red-100 rounded-2xl p-6 border border-orange-200/50">
+                     <div class="bg-gradient-to-br from-blue-50 to-blue-100 rounded-2xl p-6 border border-blue-200/50">
                         <div class="flex items-center mb-3">
-                           <div class="w-8 h-8 bg-orange-500 rounded-xl flex items-center justify-center mr-3">
+                           <div class="w-8 h-8 bg-blue-500 rounded-xl flex items-center justify-center mr-3">
                               <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h14M5 12a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2M5 12a2 2 0 00-2 2v4a2 2 0 002 2h14a2 2 0 002-2v-4a2 2 0 00-2-2"/>
                               </svg>
                            </div>
                            <dt class="text-sm font-semibold text-orange-900">Backend</dt>
                         </div>
-                        <dd class="text-lg font-bold text-orange-800">HyperExpress + TypeScript</dd>
+                        <dd class="text-lg font-bold text-blue-800">HyperExpress + TypeScript</dd>
                      </div>
                   </div>
                </div>
@@ -268,7 +268,7 @@
                      <h3 class="text-lg leading-6 font-medium text-gray-900">Manajemen Siswa</h3>
                      <button
                         on:click={() => router.visit('/admin/students')}
-                        class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-teal-600 hover:bg-teal-700"
+                        class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700"
                      >
                         Kelola Data Siswa
                      </button>
@@ -289,7 +289,7 @@
                      <h3 class="text-lg leading-6 font-medium text-gray-900">Manajemen Wali Murid</h3>
                      <button
                         on:click={() => router.visit('/admin/parents')}
-                        class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-purple-600 hover:bg-purple-700"
+                        class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700"
                      >
                         Kelola Data Wali Murid
                      </button>

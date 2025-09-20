@@ -21,7 +21,7 @@
 </script>
 
 <!-- Modern Material Design Header -->
-<header class="bg-gradient-to-r from-red-600 via-red-700 to-rose-800 shadow-xl relative overflow-hidden header-enhanced">
+<header class="bg-gradient-to-r from-blue-600 via-blue-700 to-indigo-800 shadow-xl relative overflow-hidden header-enhanced">
    <!-- Background Pattern -->
    <div class="absolute inset-0 opacity-10">
       <div class="absolute top-0 left-0 w-full h-full">

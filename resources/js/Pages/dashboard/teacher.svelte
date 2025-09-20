@@ -352,7 +352,7 @@
                   </div>
                </div>
 
-               <div class="group bg-gradient-to-br from-purple-500 to-purple-700 rounded-2xl shadow-xl hover:shadow-2xl stats-card-enhanced overflow-hidden relative fade-in-up stagger-3">
+               <div class="group bg-gradient-to-br from-indigo-500 to-indigo-700 rounded-2xl shadow-xl hover:shadow-2xl stats-card-enhanced overflow-hidden relative fade-in-up stagger-3">
                   <div class="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
                   <div class="relative p-6">
                      <div class="flex items-center justify-between">
@@ -371,7 +371,7 @@
                   </div>
                </div>
 
-               <div class="group bg-gradient-to-br from-amber-500 to-orange-500 rounded-2xl shadow-xl hover:shadow-2xl stats-card-enhanced overflow-hidden relative fade-in-up stagger-4">
+               <div class="group bg-gradient-to-br from-blue-500 to-blue-700 rounded-2xl shadow-xl hover:shadow-2xl stats-card-enhanced overflow-hidden relative fade-in-up stagger-4">
                   <div class="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
                   <div class="relative p-6">
                      <div class="flex items-center justify-between">
@@ -395,7 +395,7 @@
             <div class="bg-white/80 backdrop-blur-xl shadow-2xl rounded-3xl mb-12 border border-white/20 fade-in-up">
                <div class="px-8 py-8">
                   <div class="flex items-center space-x-3 mb-8">
-                     <div class="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center">
+                     <div class="w-10 h-10 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center">
                         <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
                         </svg>
@@ -427,8 +427,8 @@
                            <span class="text-sm font-medium">Tulis Jurnal</span>
                         </div>
                      </button>
-                     <button 
-                        class="group relative bg-gradient-to-br from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white font-semibold py-6 px-6 rounded-2xl shadow-lg hover:shadow-xl transform hover:-translate-y-1 transition-all duration-300 overflow-hidden"
+                     <button
+                        class="group relative bg-gradient-to-br from-indigo-500 to-indigo-600 hover:from-indigo-600 hover:to-indigo-700 text-white font-semibold py-6 px-6 rounded-2xl shadow-lg hover:shadow-xl transform hover:-translate-y-1 transition-all duration-300 overflow-hidden"
                         on:click={createExam}
                      >
                         <div class="absolute inset-0 bg-gradient-to-r from-white/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
@@ -439,8 +439,8 @@
                            <span class="text-sm font-medium">Buat Ujian</span>
                         </div>
                      </button>
-                     <button 
-                        class="group relative bg-gradient-to-br from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white font-semibold py-6 px-6 rounded-2xl shadow-lg hover:shadow-xl transform hover:-translate-y-1 transition-all duration-300 overflow-hidden"
+                     <button
+                        class="group relative bg-gradient-to-br from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-semibold py-6 px-6 rounded-2xl shadow-lg hover:shadow-xl transform hover:-translate-y-1 transition-all duration-300 overflow-hidden"
                         on:click={() => navigateToSection('classes')}
                      >
                         <div class="absolute inset-0 bg-gradient-to-r from-white/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
@@ -508,7 +508,7 @@
                <div class="group bg-white/80 backdrop-blur-xl shadow-2xl rounded-3xl border border-white/20 hover:shadow-3xl transition-all duration-500 fade-in-up stagger-2">
                   <div class="px-8 py-8">
                      <div class="flex items-center space-x-3 mb-6">
-                        <div class="w-12 h-12 bg-gradient-to-br from-purple-500 to-purple-600 rounded-2xl flex items-center justify-center shadow-lg">
+                        <div class="w-12 h-12 bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-2xl flex items-center justify-center shadow-lg">
                            <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/>
                            </svg>
@@ -806,7 +806,7 @@
                <div class="px-8 py-8 sm:p-10">
                   <div class="flex justify-between items-center mb-8">
                      <div class="flex items-center space-x-3">
-                        <div class="p-3 bg-gradient-to-br from-purple-500 to-pink-600 rounded-2xl shadow-lg">
+                        <div class="p-3 bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-2xl shadow-lg">
                            <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
                            </svg>

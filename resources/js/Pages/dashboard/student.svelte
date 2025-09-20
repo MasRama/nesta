@@ -451,7 +451,7 @@
                   </div>
                </div>
 
-               <div class="group bg-gradient-to-br from-amber-500 to-orange-500 rounded-2xl shadow-xl hover:shadow-2xl stats-card-enhanced overflow-hidden relative fade-in-up stagger-3">
+               <div class="group bg-gradient-to-br from-blue-500 to-blue-700 rounded-2xl shadow-xl hover:shadow-2xl stats-card-enhanced overflow-hidden relative fade-in-up stagger-3">
                   <div class="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
                   <div class="relative p-6">
                      <div class="flex items-center justify-between">
@@ -470,7 +470,7 @@
                   </div>
                </div>
 
-               <div class="group bg-gradient-to-br from-indigo-500 to-purple-600 rounded-2xl shadow-xl hover:shadow-2xl stats-card-enhanced overflow-hidden relative fade-in-up stagger-4">
+               <div class="group bg-gradient-to-br from-indigo-500 to-indigo-700 rounded-2xl shadow-xl hover:shadow-2xl stats-card-enhanced overflow-hidden relative fade-in-up stagger-4">
                   <div class="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
                   <div class="relative p-6">
                      <div class="flex items-center justify-between">
@@ -575,7 +575,7 @@
       {#if currentSection === 'attendance'}
          <!-- Attendance Section -->
          <div class="px-4 py-8 sm:px-0">
-            <div class="bg-gradient-to-br from-white to-emerald-50/80 shadow-xl rounded-2xl border border-emerald-200/40">
+            <div class="bg-gradient-to-br from-white to-blue-50/80 shadow-xl rounded-2xl border border-blue-200/40">
                <div class="px-6 py-8">
                   <div class="flex items-center mb-8">
                      <div class="p-3 bg-gradient-to-r from-blue-500 to-blue-600 rounded-xl shadow-lg">
@@ -678,7 +678,7 @@
       {#if currentSection === 'exams'}
          <!-- Exams Section -->
          <div class="px-4 py-8 sm:px-0">
-            <div class="bg-gradient-to-br from-white to-amber-50/80 shadow-xl rounded-2xl border border-amber-200/40">
+            <div class="bg-gradient-to-br from-white to-blue-50/80 shadow-xl rounded-2xl border border-blue-200/40">
                <div class="px-6 py-8">
                   <div class="flex items-center mb-8">
                      <div class="p-3 bg-gradient-to-r from-purple-500 to-purple-600 rounded-xl shadow-lg">
