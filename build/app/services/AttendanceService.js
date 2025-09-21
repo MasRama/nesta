@@ -98,25 +98,50 @@ class AttendanceService {
     }
     async scanStudentQR(qrData, teacherUserId, subjectId, scheduleId, classId) {
         try {
-            const qrParts = qrData.split('_');
-            if (qrParts.length < 2) {
+            const trimmedQrData = qrData.trim();
+            if (!trimmedQrData) {
                 return {
                     success: false,
-                    message: "Format QR code tidak valid. Format yang benar: NSID_Nama Lengkap"
+                    message: "QR code tidak boleh kosong"
                 };
             }
-            const nsid = qrParts[0].trim();
-            const namaLengkap = qrParts.slice(1).join('_').trim();
-            const student = await DB_1.default.from("students")
-                .where("nipd", nsid)
-                .where("nama", namaLengkap)
-                .where("is_active", true)
-                .first();
-            if (!student) {
-                return {
-                    success: false,
-                    message: `Siswa dengan NSID ${nsid} dan nama ${namaLengkap} tidak ditemukan atau tidak aktif`
-                };
+            let student;
+            let nipd;
+            let namaLengkap = null;
+            if (trimmedQrData.includes('_')) {
+                const qrParts = trimmedQrData.split('_');
+                if (qrParts.length < 2) {
+                    return {
+                        success: false,
+                        message: "Format QR code tidak valid. Format yang didukung: NIPD_Nama Lengkap atau NIPD saja"
+                    };
+                }
+                nipd = qrParts[0].trim();
+                namaLengkap = qrParts.slice(1).join('_').trim();
+                student = await DB_1.default.from("students")
+                    .where("nipd", nipd)
+                    .where("nama", namaLengkap)
+                    .where("is_active", true)
+                    .first();
+                if (!student) {
+                    return {
+                        success: false,
+                        message: `Siswa dengan NIPD ${nipd} dan nama ${namaLengkap} tidak ditemukan atau tidak aktif`
+                    };
+                }
+            }
+            else {
+                nipd = trimmedQrData;
+                student = await DB_1.default.from("students")
+                    .where("nipd", nipd)
+                    .where("is_active", true)
+                    .first();
+                if (!student) {
+                    return {
+                        success: false,
+                        message: `Siswa dengan NIPD ${nipd} tidak ditemukan atau tidak aktif`
+                    };
+                }
             }
             const teacher = await DB_1.default.from("teachers")
                 .where("user_id", teacherUserId)
@@ -207,9 +232,11 @@ class AttendanceService {
                 updated_at: (0, dayjs_1.default)().valueOf()
             };
             await DB_1.default.table("attendance_records").insert(attendanceRecord);
+            const formatUsed = namaLengkap ? "NIPD + Nama" : "NIPD";
+            const successMessage = `Absensi ${student.nama} (${student.nipd}) berhasil dicatat [Format: ${formatUsed}]`;
             return {
                 success: true,
-                message: `Absensi ${student.nama} (${student.nipd}) berhasil dicatat`,
+                message: successMessage,
                 attendance: attendanceRecord,
                 student: {
                     id: student.id,
@@ -313,6 +340,119 @@ class AttendanceService {
             acc[stat.status] = stat.count;
             return acc;
         }, {});
+    }
+    async getStudentAttendanceHistory(studentId, options = {}) {
+        if (!studentId) {
+            throw new Error("Student ID is required");
+        }
+        const { page = 1, limit = 20, subjectId, startDate, endDate, classId } = options;
+        const validatedPage = Math.max(1, Math.floor(page));
+        const validatedLimit = Math.min(100, Math.max(1, Math.floor(limit)));
+        const offset = (validatedPage - 1) * validatedLimit;
+        if (startDate && !this.isValidDate(startDate)) {
+            throw new Error("Invalid start date format. Use YYYY-MM-DD");
+        }
+        if (endDate && !this.isValidDate(endDate)) {
+            throw new Error("Invalid end date format. Use YYYY-MM-DD");
+        }
+        if (startDate && endDate && new Date(startDate) > new Date(endDate)) {
+            throw new Error("Start date cannot be after end date");
+        }
+        let query = DB_1.default.from("attendance_records as ar")
+            .join("attendance_sessions as as", "ar.attendance_session_id", "as.id")
+            .join("classes as c", "as.class_id", "c.id")
+            .leftJoin("subjects as s", "as.subject_id", "s.id")
+            .where("ar.student_id", studentId);
+        if (subjectId) {
+            query = query.where("as.subject_id", subjectId);
+        }
+        if (classId) {
+            query = query.where("as.class_id", classId);
+        }
+        if (startDate) {
+            query = query.where("as.attendance_date", ">=", startDate);
+        }
+        if (endDate) {
+            query = query.where("as.attendance_date", "<=", endDate);
+        }
+        const totalQuery = query.clone().count("* as count").first();
+        const total = await totalQuery;
+        const data = await query
+            .select("ar.id", "ar.status", "ar.scanned_at", "ar.notes", "ar.created_at", "as.attendance_date", "as.starts_at", "as.expires_at", "c.name as class_name", "c.grade_level", "s.nama as subject_name", "s.kode as subject_code")
+            .orderBy("as.attendance_date", "desc")
+            .orderBy("as.starts_at", "desc")
+            .limit(validatedLimit)
+            .offset(offset);
+        return {
+            data,
+            pagination: {
+                page: validatedPage,
+                limit: validatedLimit,
+                total: total?.count || 0,
+                totalPages: Math.ceil((total?.count || 0) / validatedLimit)
+            }
+        };
+    }
+    async getStudentAttendanceStatsBySubject(studentId, options = {}) {
+        const { startDate, endDate, classId } = options;
+        let query = DB_1.default.from("attendance_records as ar")
+            .join("attendance_sessions as as", "ar.attendance_session_id", "as.id")
+            .join("subjects as s", "as.subject_id", "s.id")
+            .where("ar.student_id", studentId);
+        if (classId) {
+            query = query.where("as.class_id", classId);
+        }
+        if (startDate) {
+            query = query.where("as.attendance_date", ">=", startDate);
+        }
+        if (endDate) {
+            query = query.where("as.attendance_date", "<=", endDate);
+        }
+        const stats = await query
+            .select("s.id as subject_id", "s.nama as subject_name", "s.kode as subject_code", "ar.status")
+            .count("* as count")
+            .groupBy("s.id", "s.nama", "s.kode", "ar.status")
+            .orderBy("s.nama");
+        const groupedStats = {};
+        stats.forEach(stat => {
+            const subjectKey = stat.subject_id;
+            if (!groupedStats[subjectKey]) {
+                groupedStats[subjectKey] = {
+                    subject_id: stat.subject_id,
+                    subject_name: stat.subject_name,
+                    subject_code: stat.subject_code,
+                    total: 0,
+                    present: 0,
+                    absent: 0,
+                    late: 0,
+                    excused: 0,
+                    percentage: 0
+                };
+            }
+            groupedStats[subjectKey][stat.status] = stat.count;
+            groupedStats[subjectKey].total += stat.count;
+        });
+        Object.values(groupedStats).forEach((subject) => {
+            if (subject.total > 0) {
+                subject.percentage = Math.round((subject.present / subject.total) * 100);
+            }
+        });
+        return Object.values(groupedStats);
+    }
+    async getStudentSubjects(studentId) {
+        if (!studentId) {
+            throw new Error("Student ID is required");
+        }
+        return DB_1.default.from("student_classes as sc")
+            .join("subject_classes as sbc", "sc.class_id", "sbc.class_id")
+            .join("subjects as s", "sbc.subject_id", "s.id")
+            .where("sc.student_id", studentId)
+            .where("sc.is_active", true)
+            .where("sbc.is_active", true)
+            .where("s.is_active", true)
+            .select("s.id", "s.nama", "s.kode", "s.deskripsi")
+            .groupBy("s.id", "s.nama", "s.kode", "s.deskripsi")
+            .orderBy("s.nama");
     }
     async validateSpecificTeacherSchedule(teacherId, subjectId, scheduleId, classId) {
         try {
@@ -655,6 +795,236 @@ class AttendanceService {
             console.error("Error exporting attendance data:", error);
             throw error;
         }
+    }
+    async getParentChildren(parentId) {
+        if (!parentId) {
+            throw new Error("Parent ID is required");
+        }
+        return DB_1.default.from("parent_student_relations as psr")
+            .join("users as u", "psr.student_id", "u.id")
+            .leftJoin("students as s", "u.id", "s.user_id")
+            .where("psr.parent_id", parentId)
+            .select("u.id as user_id", "u.name", "u.email", "s.id as student_id", "s.nipd", "s.nama as student_name", "s.kelas", "psr.relationship", "psr.is_primary_contact")
+            .orderBy("psr.is_primary_contact", "desc")
+            .orderBy("u.name");
+    }
+    async getParentChildrenAttendanceHistory(parentId, options = {}) {
+        if (!parentId) {
+            throw new Error("Parent ID is required");
+        }
+        const { page = 1, limit = 20, subjectId, startDate, endDate, classId, childId } = options;
+        const validatedPage = Math.max(1, Math.floor(page));
+        const validatedLimit = Math.min(100, Math.max(1, Math.floor(limit)));
+        const offset = (validatedPage - 1) * validatedLimit;
+        if (startDate && !this.isValidDate(startDate)) {
+            throw new Error("Invalid start date format. Use YYYY-MM-DD");
+        }
+        if (endDate && !this.isValidDate(endDate)) {
+            throw new Error("Invalid end date format. Use YYYY-MM-DD");
+        }
+        if (startDate && endDate && new Date(startDate) > new Date(endDate)) {
+            throw new Error("Start date cannot be after end date");
+        }
+        const children = await this.getParentChildren(parentId);
+        if (children.length === 0) {
+            return {
+                data: [],
+                pagination: {
+                    page: validatedPage,
+                    limit: validatedLimit,
+                    total: 0,
+                    totalPages: 0
+                },
+                children: []
+            };
+        }
+        const childUserIds = children.map(child => child.user_id);
+        let query = DB_1.default.from("attendance_records as ar")
+            .join("attendance_sessions as as", "ar.attendance_session_id", "as.id")
+            .join("classes as c", "as.class_id", "c.id")
+            .leftJoin("subjects as s", "as.subject_id", "s.id")
+            .join("users as u", "ar.student_id", "u.id")
+            .leftJoin("students as st", "u.id", "st.user_id")
+            .whereIn("ar.student_id", childUserIds);
+        if (childId) {
+            query = query.where("ar.student_id", childId);
+        }
+        if (subjectId) {
+            query = query.where("as.subject_id", subjectId);
+        }
+        if (classId) {
+            query = query.where("as.class_id", classId);
+        }
+        if (startDate) {
+            query = query.where("as.attendance_date", ">=", startDate);
+        }
+        if (endDate) {
+            query = query.where("as.attendance_date", "<=", endDate);
+        }
+        const totalQuery = query.clone().count("* as count").first();
+        const total = await totalQuery;
+        const data = await query
+            .select("ar.id", "ar.status", "ar.scanned_at", "ar.notes", "ar.created_at", "as.attendance_date", "as.starts_at", "as.expires_at", "c.name as class_name", "c.grade_level", "s.nama as subject_name", "s.kode as subject_code", "u.id as student_user_id", "u.name as student_name", "st.nipd as student_nipd", "st.kelas as student_class")
+            .orderBy("as.attendance_date", "desc")
+            .orderBy("u.name")
+            .orderBy("as.starts_at", "desc")
+            .limit(validatedLimit)
+            .offset(offset);
+        return {
+            data,
+            pagination: {
+                page: validatedPage,
+                limit: validatedLimit,
+                total: total?.count || 0,
+                totalPages: Math.ceil((total?.count || 0) / validatedLimit)
+            },
+            children
+        };
+    }
+    async getParentChildrenAttendanceStats(parentId, options = {}) {
+        if (!parentId) {
+            throw new Error("Parent ID is required");
+        }
+        const { startDate, endDate, classId, childId } = options;
+        if (startDate && !this.isValidDate(startDate)) {
+            throw new Error("Invalid start date format. Use YYYY-MM-DD");
+        }
+        if (endDate && !this.isValidDate(endDate)) {
+            throw new Error("Invalid end date format. Use YYYY-MM-DD");
+        }
+        const children = await this.getParentChildren(parentId);
+        if (children.length === 0) {
+            return {
+                combined: { present: 0, absent: 0, late: 0, excused: 0, total: 0, percentage: 0 },
+                per_child: [],
+                per_subject: []
+            };
+        }
+        const childUserIds = children.map(child => child.user_id);
+        let query = DB_1.default.from("attendance_records as ar")
+            .join("attendance_sessions as as", "ar.attendance_session_id", "as.id")
+            .join("users as u", "ar.student_id", "u.id")
+            .leftJoin("students as st", "u.id", "st.user_id")
+            .leftJoin("subjects as s", "as.subject_id", "s.id")
+            .whereIn("ar.student_id", childUserIds);
+        if (childId) {
+            query = query.where("ar.student_id", childId);
+        }
+        if (classId) {
+            query = query.where("as.class_id", classId);
+        }
+        if (startDate) {
+            query = query.where("as.attendance_date", ">=", startDate);
+        }
+        if (endDate) {
+            query = query.where("as.attendance_date", "<=", endDate);
+        }
+        const combinedStats = await query.clone()
+            .select("ar.status")
+            .count("* as count")
+            .groupBy("ar.status");
+        const perChildStats = await query.clone()
+            .select("u.id as student_id", "u.name as student_name", "st.nipd", "st.kelas", "ar.status")
+            .count("* as count")
+            .groupBy("u.id", "u.name", "st.nipd", "st.kelas", "ar.status")
+            .orderBy("u.name");
+        const perSubjectStats = await query.clone()
+            .select("s.id as subject_id", "s.nama as subject_name", "s.kode as subject_code", "ar.status")
+            .count("* as count")
+            .groupBy("s.id", "s.nama", "s.kode", "ar.status")
+            .orderBy("s.nama");
+        const combined = combinedStats.reduce((acc, stat) => {
+            acc[stat.status] = stat.count;
+            acc.total += stat.count;
+            return acc;
+        }, { present: 0, absent: 0, late: 0, excused: 0, total: 0 });
+        combined.percentage = combined.total > 0 ? Math.round((combined.present / combined.total) * 100) : 0;
+        const perChildMap = new Map();
+        perChildStats.forEach((stat) => {
+            const key = stat.student_id;
+            if (!perChildMap.has(key)) {
+                perChildMap.set(key, {
+                    student_id: stat.student_id,
+                    student_name: stat.student_name,
+                    nipd: stat.nipd,
+                    kelas: stat.kelas,
+                    present: 0,
+                    absent: 0,
+                    late: 0,
+                    excused: 0,
+                    total: 0,
+                    percentage: 0
+                });
+            }
+            const childStat = perChildMap.get(key);
+            childStat[stat.status] = stat.count;
+            childStat.total += stat.count;
+        });
+        const perChild = Array.from(perChildMap.values()).map((child) => {
+            child.percentage = child.total > 0 ? Math.round((child.present / child.total) * 100) : 0;
+            return child;
+        });
+        const perSubjectMap = new Map();
+        perSubjectStats.forEach((stat) => {
+            const key = stat.subject_id;
+            if (!perSubjectMap.has(key)) {
+                perSubjectMap.set(key, {
+                    subject_id: stat.subject_id,
+                    subject_name: stat.subject_name,
+                    subject_code: stat.subject_code,
+                    present: 0,
+                    absent: 0,
+                    late: 0,
+                    excused: 0,
+                    total: 0,
+                    percentage: 0
+                });
+            }
+            const subjectStat = perSubjectMap.get(key);
+            subjectStat[stat.status] = stat.count;
+            subjectStat.total += stat.count;
+        });
+        const perSubject = Array.from(perSubjectMap.values()).map((subject) => {
+            subject.percentage = subject.total > 0 ? Math.round((subject.present / subject.total) * 100) : 0;
+            return subject;
+        });
+        return {
+            combined,
+            per_child: perChild,
+            per_subject: perSubject
+        };
+    }
+    async getParentChildrenSubjects(parentId) {
+        if (!parentId) {
+            throw new Error("Parent ID is required");
+        }
+        const children = await this.getParentChildren(parentId);
+        if (children.length === 0) {
+            return [];
+        }
+        const childUserIds = children.map(child => child.user_id);
+        return DB_1.default.from("student_classes as sc")
+            .join("subject_classes as sbc", "sc.class_id", "sbc.class_id")
+            .join("subjects as s", "sbc.subject_id", "s.id")
+            .whereIn("sc.student_id", childUserIds)
+            .where("sc.is_active", true)
+            .where("sbc.is_active", true)
+            .where("s.is_active", true)
+            .select("s.id", "s.nama", "s.kode", "s.deskripsi")
+            .groupBy("s.id", "s.nama", "s.kode", "s.deskripsi")
+            .orderBy("s.nama");
+    }
+    isValidDate(dateString) {
+        const regex = /^\d{4}-\d{2}-\d{2}$/;
+        if (!regex.test(dateString)) {
+            return false;
+        }
+        const date = new Date(dateString);
+        const timestamp = date.getTime();
+        if (typeof timestamp !== 'number' || Number.isNaN(timestamp)) {
+            return false;
+        }
+        return dateString === date.toISOString().split('T')[0];
     }
 }
 exports.default = new AttendanceService();

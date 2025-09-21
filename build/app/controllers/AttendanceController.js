@@ -164,6 +164,75 @@ class AttendanceController {
             return response.status(500).json({ error: "Failed to get attendance statistics" });
         }
     }
+    async getStudentAttendanceHistory(request, response) {
+        try {
+            const { student_id } = request.params;
+            const { page = 1, limit = 20, subject_id, start_date, end_date, class_id } = request.query;
+            if (!student_id) {
+                return response.status(400).json({ error: "Student ID is required" });
+            }
+            const canAccess = await roleAuth_1.default.canAccessStudent(request, student_id);
+            if (!canAccess) {
+                return response.status(403).json({ error: "Unauthorized access to student data" });
+            }
+            const pageNum = parseInt(page);
+            const limitNum = parseInt(limit);
+            if (isNaN(pageNum) || pageNum < 1) {
+                return response.status(400).json({ error: "Invalid page number" });
+            }
+            if (isNaN(limitNum) || limitNum < 1 || limitNum > 100) {
+                return response.status(400).json({ error: "Invalid limit. Must be between 1 and 100" });
+            }
+            const result = await AttendanceService_1.default.getStudentAttendanceHistory(student_id, {
+                page: parseInt(page),
+                limit: parseInt(limit),
+                subjectId: subject_id,
+                startDate: start_date,
+                endDate: end_date,
+                classId: class_id
+            });
+            return response.json(result);
+        }
+        catch (error) {
+            console.error("Error getting student attendance history:", error);
+            return response.status(500).json({ error: "Failed to get attendance history" });
+        }
+    }
+    async getStudentAttendanceStatsBySubject(request, response) {
+        try {
+            const { student_id } = request.params;
+            const { start_date, end_date, class_id } = request.query;
+            const canAccess = await roleAuth_1.default.canAccessStudent(request, student_id);
+            if (!canAccess) {
+                return response.status(403).json({ error: "Unauthorized access to student data" });
+            }
+            const stats = await AttendanceService_1.default.getStudentAttendanceStatsBySubject(student_id, {
+                startDate: start_date,
+                endDate: end_date,
+                classId: class_id
+            });
+            return response.json({ stats });
+        }
+        catch (error) {
+            console.error("Error getting student attendance stats by subject:", error);
+            return response.status(500).json({ error: "Failed to get attendance statistics by subject" });
+        }
+    }
+    async getStudentSubjects(request, response) {
+        try {
+            const { student_id } = request.params;
+            const canAccess = await roleAuth_1.default.canAccessStudent(request, student_id);
+            if (!canAccess) {
+                return response.status(403).json({ error: "Unauthorized access to student data" });
+            }
+            const subjects = await AttendanceService_1.default.getStudentSubjects(student_id);
+            return response.json({ subjects });
+        }
+        catch (error) {
+            console.error("Error getting student subjects:", error);
+            return response.status(500).json({ error: "Failed to get student subjects" });
+        }
+    }
     async getTodaySchedules(request, response) {
         try {
             if (request.user.role !== 'teacher') {
@@ -319,6 +388,175 @@ class AttendanceController {
         catch (error) {
             console.error("Error exporting attendance data:", error);
             return response.status(500).json({ error: "Failed to export attendance data" });
+        }
+    }
+    async getParentChildren(request, response) {
+        try {
+            const { parent_id } = request.params;
+            if (!parent_id) {
+                return response.status(400).json({ error: "Parent ID is required" });
+            }
+            if (request.user.role !== 'admin' && request.user.id !== parent_id) {
+                return response.status(403).json({ error: "Unauthorized access to parent data" });
+            }
+            if (request.user.role === 'parent') {
+                const parentUser = await DB_1.default.from('users')
+                    .where('id', parent_id)
+                    .where('role', 'parent')
+                    .where('is_verified', true)
+                    .first();
+                if (!parentUser) {
+                    return response.status(404).json({ error: "Parent not found or inactive" });
+                }
+            }
+            const children = await AttendanceService_1.default.getParentChildren(parent_id);
+            return response.json({
+                children
+            });
+        }
+        catch (error) {
+            console.error("Error getting parent children:", error);
+            return response.status(500).json({ error: "Internal server error" });
+        }
+    }
+    async getParentChildrenAttendanceHistory(request, response) {
+        try {
+            const { parent_id } = request.params;
+            const { page = 1, limit = 20, subject_id, start_date, end_date, class_id, child_id } = request.query;
+            if (!parent_id) {
+                return response.status(400).json({ error: "Parent ID is required" });
+            }
+            if (request.user.role !== 'admin' && request.user.id !== parent_id) {
+                return response.status(403).json({ error: "Unauthorized access to parent data" });
+            }
+            const pageNum = parseInt(page);
+            const limitNum = parseInt(limit);
+            if (isNaN(pageNum) || pageNum < 1) {
+                return response.status(400).json({ error: "Invalid page number" });
+            }
+            if (isNaN(limitNum) || limitNum < 1 || limitNum > 100) {
+                return response.status(400).json({ error: "Invalid limit. Must be between 1 and 100" });
+            }
+            if (request.user.role === 'parent') {
+                const parentUser = await DB_1.default.from('users')
+                    .where('id', parent_id)
+                    .where('role', 'parent')
+                    .where('is_verified', true)
+                    .first();
+                if (!parentUser) {
+                    return response.status(404).json({ error: "Parent not found or inactive" });
+                }
+            }
+            if (child_id) {
+                const canAccess = await roleAuth_1.default.canAccessStudent(request, child_id);
+                if (!canAccess) {
+                    return response.status(403).json({ error: "Unauthorized access to student data" });
+                }
+                if (request.user.role === 'parent') {
+                    const relation = await DB_1.default.from("parent_student_relations")
+                        .where("parent_id", parent_id)
+                        .where("student_id", child_id)
+                        .first();
+                    if (!relation) {
+                        return response.status(403).json({ error: "Child does not belong to this parent" });
+                    }
+                }
+            }
+            const result = await AttendanceService_1.default.getParentChildrenAttendanceHistory(parent_id, {
+                page: pageNum,
+                limit: limitNum,
+                subjectId: subject_id,
+                startDate: start_date,
+                endDate: end_date,
+                classId: class_id,
+                childId: child_id
+            });
+            return response.json(result);
+        }
+        catch (error) {
+            console.error("Error getting parent children attendance history:", error);
+            if (error.message.includes("Invalid") || error.message.includes("required")) {
+                return response.status(400).json({ error: error.message });
+            }
+            return response.status(500).json({ error: "Internal server error" });
+        }
+    }
+    async getParentChildrenAttendanceStats(request, response) {
+        try {
+            const { parent_id } = request.params;
+            const { start_date, end_date, class_id, child_id } = request.query;
+            if (!parent_id) {
+                return response.status(400).json({ error: "Parent ID is required" });
+            }
+            if (request.user.role !== 'admin' && request.user.id !== parent_id) {
+                return response.status(403).json({ error: "Unauthorized access to parent data" });
+            }
+            if (request.user.role === 'parent') {
+                const parentUser = await DB_1.default.from('users')
+                    .where('id', parent_id)
+                    .where('role', 'parent')
+                    .where('is_verified', true)
+                    .first();
+                if (!parentUser) {
+                    return response.status(404).json({ error: "Parent not found or inactive" });
+                }
+            }
+            if (child_id) {
+                const canAccess = await roleAuth_1.default.canAccessStudent(request, child_id);
+                if (!canAccess) {
+                    return response.status(403).json({ error: "Unauthorized access to student data" });
+                }
+                if (request.user.role === 'parent') {
+                    const relation = await DB_1.default.from("parent_student_relations")
+                        .where("parent_id", parent_id)
+                        .where("student_id", child_id)
+                        .first();
+                    if (!relation) {
+                        return response.status(403).json({ error: "Child does not belong to this parent" });
+                    }
+                }
+            }
+            const stats = await AttendanceService_1.default.getParentChildrenAttendanceStats(parent_id, {
+                startDate: start_date,
+                endDate: end_date,
+                classId: class_id,
+                childId: child_id
+            });
+            return response.json({ stats });
+        }
+        catch (error) {
+            console.error("Error getting parent children attendance stats:", error);
+            if (error.message.includes("Invalid") || error.message.includes("required")) {
+                return response.status(400).json({ error: error.message });
+            }
+            return response.status(500).json({ error: "Internal server error" });
+        }
+    }
+    async getParentChildrenSubjects(request, response) {
+        try {
+            const { parent_id } = request.params;
+            if (!parent_id) {
+                return response.status(400).json({ error: "Parent ID is required" });
+            }
+            if (request.user.role !== 'admin' && request.user.id !== parent_id) {
+                return response.status(403).json({ error: "Unauthorized access to parent data" });
+            }
+            if (request.user.role === 'parent') {
+                const parentUser = await DB_1.default.from('users')
+                    .where('id', parent_id)
+                    .where('role', 'parent')
+                    .where('is_verified', true)
+                    .first();
+                if (!parentUser) {
+                    return response.status(404).json({ error: "Parent not found or inactive" });
+                }
+            }
+            const subjects = await AttendanceService_1.default.getParentChildrenSubjects(parent_id);
+            return response.json({ subjects });
+        }
+        catch (error) {
+            console.error("Error getting parent children subjects:", error);
+            return response.status(500).json({ error: "Internal server error" });
         }
     }
 }

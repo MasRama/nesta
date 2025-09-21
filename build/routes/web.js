@@ -42,6 +42,13 @@ Route.post("/api/attendance/scan", [auth_1.default, roleAuth_1.default.student()
 Route.get("/api/attendance/class/:class_id", [auth_1.default, roleAuth_1.default.teacherOrAdmin()], AttendanceController_1.default.getClassAttendance);
 Route.get("/api/attendance/student/:student_id", [auth_1.default], AttendanceController_1.default.getStudentAttendance);
 Route.get("/api/attendance/stats/:student_id", [auth_1.default], AttendanceController_1.default.getAttendanceStats);
+Route.get("/api/attendance/student/:student_id/history", [auth_1.default], AttendanceController_1.default.getStudentAttendanceHistory);
+Route.get("/api/attendance/student/:student_id/stats-by-subject", [auth_1.default], AttendanceController_1.default.getStudentAttendanceStatsBySubject);
+Route.get("/api/attendance/student/:student_id/subjects", [auth_1.default], AttendanceController_1.default.getStudentSubjects);
+Route.get("/api/attendance/parent/:parent_id/children", [auth_1.default, roleAuth_1.default.require(['parent', 'admin'])], AttendanceController_1.default.getParentChildren);
+Route.get("/api/attendance/parent/:parent_id/children/history", [auth_1.default, roleAuth_1.default.require(['parent', 'admin'])], AttendanceController_1.default.getParentChildrenAttendanceHistory);
+Route.get("/api/attendance/parent/:parent_id/children/stats", [auth_1.default, roleAuth_1.default.require(['parent', 'admin'])], AttendanceController_1.default.getParentChildrenAttendanceStats);
+Route.get("/api/attendance/parent/:parent_id/children/subjects", [auth_1.default, roleAuth_1.default.require(['parent', 'admin'])], AttendanceController_1.default.getParentChildrenSubjects);
 Route.post("/api/attendance/close/:session_id", [auth_1.default, roleAuth_1.default.teacher()], AttendanceController_1.default.closeSession);
 Route.get("/api/attendance/teacher/sessions", [auth_1.default, roleAuth_1.default.teacher()], AttendanceController_1.default.getTeacherAttendanceSessions);
 Route.get("/api/attendance/class/:class_id/students", [auth_1.default, roleAuth_1.default.teacherOrAdmin()], AttendanceController_1.default.getClassStudentsForAttendance);

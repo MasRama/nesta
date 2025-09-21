@@ -6,6 +6,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const DB_1 = __importDefault(require("./DB"));
 const crypto_1 = require("crypto");
 const dayjs_1 = __importDefault(require("dayjs"));
+const Authenticate_1 = __importDefault(require("./Authenticate"));
 class ParentService {
     async getParents(page = 1, limit = 10, search) {
         let query = DB_1.default.from('parents').select('*').where('is_active', true);
@@ -44,17 +45,30 @@ class ParentService {
         return await DB_1.default.from('parents').where('email', email).first();
     }
     async createParent(data) {
-        const id = (0, crypto_1.randomUUID)();
-        const hashedPassword = this.hashPassword(data.password);
+        const parentId = (0, crypto_1.randomUUID)();
+        const userId = (0, crypto_1.randomUUID)();
+        const hashedPassword = await Authenticate_1.default.hash(data.password);
         const now = (0, dayjs_1.default)().valueOf();
         const parentData = {
-            id,
+            id: parentId,
             nama: data.nama,
             email: data.email,
             password: hashedPassword,
             phone: data.phone || null,
             notes: data.notes || null,
             is_active: true,
+            created_at: now,
+            updated_at: now
+        };
+        const userData = {
+            id: userId,
+            name: data.nama,
+            email: data.email,
+            phone: data.phone || null,
+            password: hashedPassword,
+            role: 'parent',
+            is_verified: true,
+            is_admin: false,
             created_at: now,
             updated_at: now
         };
@@ -66,9 +80,16 @@ class ParentService {
                 const { password, ...parentWithoutPassword } = existingParent;
                 return parentWithoutPassword;
             }
+            const existingUser = await trx.from('users')
+                .where('email', data.email)
+                .first();
+            if (existingUser) {
+                throw new Error('Email sudah digunakan oleh user lain');
+            }
             await trx.from('parents').insert(parentData);
+            await trx.from('users').insert(userData);
             const { password, ...parentWithoutPassword } = parentData;
-            return parentWithoutPassword;
+            return { ...parentWithoutPassword, user_id: userId };
         });
     }
     async updateParent(id, data) {
@@ -77,7 +98,7 @@ class ParentService {
             updated_at: (0, dayjs_1.default)().valueOf()
         };
         if (data.password) {
-            updateData.password = this.hashPassword(data.password);
+            updateData.password = await Authenticate_1.default.hash(data.password);
         }
         await DB_1.default.from('parents').where('id', id).update(updateData);
         return await this.getParentById(id);
@@ -153,9 +174,6 @@ class ParentService {
             }
         }
         return errors;
-    }
-    hashPassword(password) {
-        return (0, crypto_1.pbkdf2Sync)(password, 'salt', 1000, 64, 'sha512').toString('hex');
     }
     isValidEmail(email) {
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
