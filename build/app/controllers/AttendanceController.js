@@ -42,7 +42,14 @@ class AttendanceController {
             if (request.user.role !== 'teacher') {
                 return response.status(403).json({ error: "Only teachers can scan student QR codes" });
             }
-            const result = await AttendanceService_1.default.scanStudentQR(qr_data, request.user.id, subject_id, schedule_id, class_id);
+            const teacher = await DB_1.default.from('teachers')
+                .where('user_id', request.user.id)
+                .where('is_active', true)
+                .first();
+            if (!teacher) {
+                return response.status(404).json({ error: "Teacher data not found" });
+            }
+            const result = await AttendanceService_1.default.scanStudentQR(qr_data, teacher.user_id, subject_id, schedule_id, class_id);
             if (result.success) {
                 return response.json({
                     message: result.message,
@@ -78,7 +85,6 @@ class AttendanceController {
                 .where('sc.teacher_id', request.user.id)
                 .where('sc.class_id', class_id)
                 .where('sc.day', currentDay)
-                .where('sc.is_active', true)
                 .where('s.is_active', true)
                 .orderBy('sc.start_time');
             return response.json({ subjects });

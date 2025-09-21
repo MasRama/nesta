@@ -36,7 +36,7 @@ class AttendanceController {
 
          const result = await AttendanceService.scanStudentQR(
             qr_data,
-            teacher.id, // Use teacher.id instead of request.user.id
+            teacher.user_id, // Use teacher.user_id for attendance_sessions foreign key constraint
             subject_id,
             schedule_id,
             class_id
@@ -79,6 +79,7 @@ class AttendanceController {
          const currentDay = dayNames[now.getDay()];
 
          // Get subjects that teacher teaches in this class today
+         // Removed schedule active validation to allow display anytime
          const subjects = await DB.from('subject_classes as sc')
             .join('subjects as s', 'sc.subject_id', 's.id')
             .select(
@@ -92,7 +93,7 @@ class AttendanceController {
             .where('sc.teacher_id', request.user.id)
             .where('sc.class_id', class_id)
             .where('sc.day', currentDay)
-            .where('sc.is_active', true)
+            // .where('sc.is_active', true) // REMOVED: Schedule active validation
             .where('s.is_active', true)
             .orderBy('sc.start_time');
 

@@ -444,6 +444,7 @@ class TeacherService {
             const currentTime = now.toTimeString().slice(0, 5); // HH:MM format
 
             // Get current active schedule for teacher
+            // Removed schedule active validation to allow display anytime
             const schedule = await DB.from("subject_classes as sc")
                 .join("subjects as s", "sc.subject_id", "s.id")
                 .join("classes as c", "sc.class_id", "c.id")
@@ -451,7 +452,7 @@ class TeacherService {
                 .where("sc.day", currentDay)
                 .where("sc.start_time", "<=", currentTime)
                 .where("sc.end_time", ">=", currentTime)
-                .where("sc.is_active", true)
+                // .where("sc.is_active", true) // REMOVED: Schedule active validation
                 .where("s.is_active", true)
                 .select(
                     "sc.*",
@@ -505,11 +506,12 @@ class TeacherService {
             }
 
             // Get subjects with their schedule information from subject_classes
+            // Removed schedule active validation to allow display anytime
             const subjectsWithSchedule = await DB.from("subject_classes as sc")
                 .join("subjects as s", "sc.subject_id", "s.id")
                 .join("classes as c", "sc.class_id", "c.id")
                 .where("sc.teacher_id", teacher.id) // Use teacher.id instead of teacherUserId
-                .where("sc.is_active", true)
+                // .where("sc.is_active", true) // REMOVED: Schedule active validation
                 .where("s.is_active", true)
                 .select(
                     "s.id",
@@ -574,11 +576,12 @@ class TeacherService {
                 return [];
             }
 
+            // Removed schedule active validation to allow display anytime
             const schedule = await DB.from("subject_classes as sc")
                 .join("subjects as s", "sc.subject_id", "s.id")
                 .join("classes as c", "sc.class_id", "c.id")
                 .where("sc.teacher_id", teacher.id) // Use teacher.id instead of teacherUserId
-                .where("sc.is_active", true)
+                // .where("sc.is_active", true) // REMOVED: Schedule active validation
                 .where("s.is_active", true)
                 .select(
                     "sc.day",
@@ -644,12 +647,13 @@ class TeacherService {
             const currentDay = dayNames[now.getDay()];
 
             // Get today's schedules for teacher
+            // Removed schedule active validation to allow display anytime
             const schedules = await DB.from("subject_classes as sc")
                 .join("subjects as s", "sc.subject_id", "s.id")
                 .join("classes as c", "sc.class_id", "c.id")
                 .where("sc.teacher_id", teacher.id) // Use teacher.id instead of teacherUserId
                 .where("sc.day", currentDay)
-                .where("sc.is_active", true)
+                // .where("sc.is_active", true) // REMOVED: Schedule active validation
                 .where("s.is_active", true)
                 .select(
                     "sc.id as schedule_id",

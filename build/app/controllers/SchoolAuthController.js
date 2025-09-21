@@ -215,15 +215,22 @@ class SchoolAuthController {
         });
     }
     async getTeacherDashboard(user, response) {
+        const teacher = await DB_1.default.from('teachers')
+            .where('user_id', user.id)
+            .where('is_active', true)
+            .first();
+        if (!teacher) {
+            return response.status(404).json({ error: 'Teacher record not found' });
+        }
         const teacherSubjects = await TeacherService_1.default.getTeacherSubjects(user.id);
         const weeklySchedule = await TeacherService_1.default.getTeacherWeeklySchedule(user.id);
         const currentSchedule = await TeacherService_1.default.getCurrentActiveSchedule(user.id);
         const journals = await DB_1.default.from("teacher_journals")
-            .where("teacher_id", user.id)
+            .where("teacher_id", teacher.id)
             .orderBy("created_at", "desc")
             .limit(5);
         const exams = await DB_1.default.from("exams")
-            .where("teacher_id", user.id)
+            .where("teacher_id", teacher.id)
             .where("status", "active")
             .orderBy("start_time", "asc");
         return response.inertia("dashboard/teacher", {

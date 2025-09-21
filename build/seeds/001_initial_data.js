@@ -4,7 +4,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.seed = seed;
-const bcrypt_1 = __importDefault(require("bcrypt"));
+const Authenticate_1 = __importDefault(require("../app/services/Authenticate"));
 async function seed(knex) {
     await knex('teacher_subjects').del();
     await knex('subject_classes').del();
@@ -18,8 +18,8 @@ async function seed(knex) {
     const subjectMtkId = '550e8400-e29b-41d4-a716-446655440004';
     const subjectIpaId = '550e8400-e29b-41d4-a716-446655440005';
     const subjectIpsId = '550e8400-e29b-41d4-a716-446655440006';
-    const adminPassword = await bcrypt_1.default.hash('admin123', 10);
-    const teacherPassword = await bcrypt_1.default.hash('guru123', 10);
+    const adminPassword = await Authenticate_1.default.hash('admin123');
+    const teacherPassword = await Authenticate_1.default.hash('guru123');
     const now = Date.now();
     await knex('users').insert({
         id: adminUserId,
@@ -28,6 +28,7 @@ async function seed(knex) {
         phone: '081234567890',
         is_verified: true,
         is_admin: true,
+        role: 'admin',
         password: adminPassword,
         remember_me_token: null,
         membership_date: new Date(),
@@ -42,6 +43,7 @@ async function seed(knex) {
         phone: '081234567891',
         is_verified: true,
         is_admin: false,
+        role: 'teacher',
         password: teacherPassword,
         remember_me_token: null,
         membership_date: new Date(),

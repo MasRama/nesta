@@ -126,12 +126,19 @@ class TeacherService {
     }
     async getTeacherClassesAndSubjects(userId) {
         try {
+            const teacher = await DB_1.default.from('teachers')
+                .where('user_id', userId)
+                .where('is_active', true)
+                .first();
+            if (!teacher) {
+                return [];
+            }
             const assignments = await DB_1.default.from('subject_classes as sc')
                 .join('classes as c', 'sc.class_id', 'c.id')
                 .join('subjects as s', 'sc.subject_id', 's.id')
-                .leftJoin('teachers as t', 't.user_id', 'sc.teacher_id')
+                .leftJoin('teachers as t', 't.id', 'sc.teacher_id')
                 .select('c.id as class_id', 'c.name as class_name', 'c.grade_level', 'c.academic_year', 'c.description as class_description', 'c.max_students', 's.id as subject_id', 's.nama as subject_name', 's.kode as subject_code', 's.deskripsi as subject_description', 'sc.day', 'sc.start_time', 'sc.end_time', 'sc.notes', 'sc.is_active as assignment_active', 't.nama as teacher_name', 't.nip as teacher_nip')
-                .where('sc.teacher_id', userId)
+                .where('sc.teacher_id', teacher.id)
                 .where('sc.is_active', true)
                 .where('s.is_active', true)
                 .orderBy('c.grade_level')
@@ -263,6 +270,16 @@ class TeacherService {
     }
     async getCurrentActiveSchedule(teacherUserId) {
         try {
+            const teacher = await DB_1.default.from('teachers')
+                .where('user_id', teacherUserId)
+                .where('is_active', true)
+                .first();
+            if (!teacher) {
+                return {
+                    hasActiveSchedule: false,
+                    message: "Data guru tidak ditemukan"
+                };
+            }
             const now = new Date();
             const dayNames = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
             const currentDay = dayNames[now.getDay()];
@@ -270,11 +287,10 @@ class TeacherService {
             const schedule = await DB_1.default.from("subject_classes as sc")
                 .join("subjects as s", "sc.subject_id", "s.id")
                 .join("classes as c", "sc.class_id", "c.id")
-                .where("sc.teacher_id", teacherUserId)
+                .where("sc.teacher_id", teacher.id)
                 .where("sc.day", currentDay)
                 .where("sc.start_time", "<=", currentTime)
                 .where("sc.end_time", ">=", currentTime)
-                .where("sc.is_active", true)
                 .where("s.is_active", true)
                 .select("sc.*", "s.id as subject_id", "s.nama as subject_name", "s.kode as subject_code", "s.deskripsi as subject_description", "c.name as class_name")
                 .first();
@@ -304,11 +320,17 @@ class TeacherService {
     }
     async getTeacherSubjects(teacherUserId) {
         try {
+            const teacher = await DB_1.default.from('teachers')
+                .where('user_id', teacherUserId)
+                .where('is_active', true)
+                .first();
+            if (!teacher) {
+                return [];
+            }
             const subjectsWithSchedule = await DB_1.default.from("subject_classes as sc")
                 .join("subjects as s", "sc.subject_id", "s.id")
                 .join("classes as c", "sc.class_id", "c.id")
-                .where("sc.teacher_id", teacherUserId)
-                .where("sc.is_active", true)
+                .where("sc.teacher_id", teacher.id)
                 .where("s.is_active", true)
                 .select("s.id", "s.nama", "s.kode", "s.deskripsi", "sc.day", "sc.start_time", "sc.end_time", "c.name as kelas")
                 .orderBy("s.nama")
@@ -344,11 +366,17 @@ class TeacherService {
     }
     async getTeacherWeeklySchedule(teacherUserId) {
         try {
+            const teacher = await DB_1.default.from('teachers')
+                .where('user_id', teacherUserId)
+                .where('is_active', true)
+                .first();
+            if (!teacher) {
+                return [];
+            }
             const schedule = await DB_1.default.from("subject_classes as sc")
                 .join("subjects as s", "sc.subject_id", "s.id")
                 .join("classes as c", "sc.class_id", "c.id")
-                .where("sc.teacher_id", teacherUserId)
-                .where("sc.is_active", true)
+                .where("sc.teacher_id", teacher.id)
                 .where("s.is_active", true)
                 .select("sc.day", "sc.start_time", "sc.end_time", "c.name as kelas", "s.id as subject_id", "s.nama as subject_name", "s.kode as subject_code")
                 .orderBy("sc.day")
@@ -375,15 +403,25 @@ class TeacherService {
     }
     async getTodaySchedules(teacherUserId) {
         try {
+            const teacher = await DB_1.default.from('teachers')
+                .where('user_id', teacherUserId)
+                .where('is_active', true)
+                .first();
+            if (!teacher) {
+                return {
+                    hasSchedules: false,
+                    schedules: [],
+                    message: "Data guru tidak ditemukan"
+                };
+            }
             const now = new Date();
             const dayNames = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
             const currentDay = dayNames[now.getDay()];
             const schedules = await DB_1.default.from("subject_classes as sc")
                 .join("subjects as s", "sc.subject_id", "s.id")
                 .join("classes as c", "sc.class_id", "c.id")
-                .where("sc.teacher_id", teacherUserId)
+                .where("sc.teacher_id", teacher.id)
                 .where("sc.day", currentDay)
-                .where("sc.is_active", true)
                 .where("s.is_active", true)
                 .select("sc.id as schedule_id", "s.id as subject_id", "s.nama as subject_name", "s.kode as subject_code", "s.deskripsi as subject_description", "sc.day", "sc.start_time", "sc.end_time", "c.id as class_id", "c.name as class_name")
                 .orderBy("sc.start_time");

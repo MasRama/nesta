@@ -75,7 +75,6 @@ class ClassService {
                     description: `Kelas ${className}`,
                     max_students: 30,
                     teacher_id: null,
-                    schedule: null,
                     created_at: now,
                     updated_at: now
                 };
@@ -152,7 +151,7 @@ class ClassService {
             const classRecord = await this.ensureClassExists(className);
             const assignments = await DB_1.default.from('subject_classes as sc')
                 .leftJoin('subjects as s', 'sc.subject_id', 's.id')
-                .leftJoin('teachers as t', 'sc.teacher_id', 't.user_id')
+                .leftJoin('teachers as t', 'sc.teacher_id', 't.id')
                 .where('sc.class_id', classRecord.id)
                 .where('sc.is_active', true)
                 .select('sc.id', 'sc.subject_id', 's.nama as subject_name', 's.kode as subject_code', 'sc.teacher_id', 't.nama as teacher_name', 'sc.day', 'sc.start_time', 'sc.end_time', 'sc.notes', 'sc.is_active');
@@ -228,7 +227,7 @@ class ClassService {
                 id: (0, crypto_1.randomUUID)(),
                 subject_id: subjectId,
                 class_id: classRecord.id,
-                teacher_id: teacher.user_id,
+                teacher_id: teacherId,
                 day: day,
                 start_time: startTime,
                 end_time: endTime,

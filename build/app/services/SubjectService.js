@@ -157,8 +157,8 @@ class SubjectService {
     async getSubjectClasses(subjectId) {
         return await DB_1.default.from('subject_classes as sc')
             .join('classes as c', 'sc.class_id', 'c.id')
-            .leftJoin('users as u', 'sc.teacher_id', 'u.id')
-            .select('c.*', 'sc.id as assignment_id', 'sc.teacher_id', 'sc.jam_per_minggu', 'sc.notes', 'sc.created_at as assigned_at', 'u.name as teacher_name')
+            .leftJoin('teachers as t', 'sc.teacher_id', 't.id')
+            .select('c.*', 'sc.id as assignment_id', 'sc.teacher_id', 'sc.day', 'sc.start_time', 'sc.end_time', 'sc.notes', 'sc.created_at as assigned_at', 't.nama as teacher_name')
             .where('sc.subject_id', subjectId)
             .where('sc.is_active', true)
             .orderBy('c.grade_level', 'asc')
@@ -167,8 +167,8 @@ class SubjectService {
     async getClassSubjects(classId) {
         return await DB_1.default.from('subject_classes as sc')
             .join('subjects as s', 'sc.subject_id', 's.id')
-            .leftJoin('users as u', 'sc.teacher_id', 'u.id')
-            .select('s.*', 'sc.id as assignment_id', 'sc.teacher_id', 'sc.jam_per_minggu', 'sc.notes', 'sc.created_at as assigned_at', 'u.name as teacher_name')
+            .leftJoin('teachers as t', 'sc.teacher_id', 't.id')
+            .select('s.*', 'sc.id as assignment_id', 'sc.teacher_id', 'sc.day', 'sc.start_time', 'sc.end_time', 'sc.notes', 'sc.created_at as assigned_at', 't.nama as teacher_name')
             .where('sc.class_id', classId)
             .where('sc.is_active', true)
             .where('s.is_active', true)

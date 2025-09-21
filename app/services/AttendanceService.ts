@@ -109,18 +109,20 @@ class AttendanceService {
 
    /**
     * Validate teacher-subject relationship for attendance
+    * Note: Schedule active validation removed to allow attendance at any time
     */
    async validateTeacherSubject(teacherId: string, subjectId: string, studentClass: string): Promise<{ valid: boolean, message: string, schedule?: any }> {
       try {
-         // Check if teacher teaches this subject and has schedule for this class
+         // Check if teacher teaches this subject for this class
+         // Removed schedule active validation (.where("sc.is_active", true)) to allow attendance anytime
          const schedule = await DB.from("subject_classes as sc")
             .join("subjects as s", "sc.subject_id", "s.id")
             .join("classes as c", "sc.class_id", "c.id")
             .where("sc.teacher_id", teacherId)
             .where("s.id", subjectId)
             .where("c.name", studentClass)
-            .where("sc.is_active", true)
-            .where("s.is_active", true)
+            // .where("sc.is_active", true) // REMOVED: Schedule active validation
+            .where("s.is_active", true) // Keep subject active validation
             .select(
                "sc.*",
                "s.id as subject_id",
@@ -133,7 +135,7 @@ class AttendanceService {
          if (!schedule) {
             return {
                valid: false,
-               message: `Anda tidak mengampu mata pelajaran ini untuk kelas ${studentClass} atau jadwal tidak aktif.`
+               message: `Anda tidak mengampu mata pelajaran ini untuk kelas ${studentClass}.`
             };
          }
 
@@ -155,8 +157,13 @@ class AttendanceService {
    /**
     * Scan student QR code for attendance (Teacher scans student QR)
     * QR format expected: NSID_Nama Lengkap (e.g., NSID001_Ahmad Budi Santoso)
+    * @param qrData QR code data in format NSID_Nama Lengkap
+    * @param teacherUserId User ID of the teacher (from users table) - used for attendance_sessions
+    * @param subjectId Subject ID
+    * @param scheduleId Optional schedule ID
+    * @param classId Optional class ID
     */
-   async scanStudentQR(qrData: string, teacherId: string, subjectId: string, scheduleId?: string, classId?: string): Promise<{ success: boolean, message: string, attendance?: AttendanceRecord, student?: any }> {
+   async scanStudentQR(qrData: string, teacherUserId: string, subjectId: string, scheduleId?: string, classId?: string): Promise<{ success: boolean, message: string, attendance?: AttendanceRecord, student?: any }> {
       try {
          // Parse QR data format: NSID_Nama Lengkap
          const qrParts = qrData.split('_');
@@ -184,14 +191,27 @@ class AttendanceService {
             };
          }
 
+         // Get teacher record from user_id for validation purposes
+         const teacher = await DB.from("teachers")
+            .where("user_id", teacherUserId)
+            .where("is_active", true)
+            .first();
+
+         if (!teacher) {
+            return {
+               success: false,
+               message: "Data guru tidak ditemukan atau tidak aktif"
+            };
+         }
+
          // Validate teacher-subject relationship
-         let scheduleValidation;
+         let scheduleValidation: { valid: boolean, message: string, schedule?: any };
          if (scheduleId && classId) {
             // Use specific schedule validation if schedule info is provided
-            scheduleValidation = await this.validateSpecificTeacherSchedule(teacherId, subjectId, scheduleId, classId);
+            scheduleValidation = await this.validateSpecificTeacherSchedule(teacher.id, subjectId, scheduleId, classId);
          } else {
             // Fallback to general validation
-            scheduleValidation = await this.validateTeacherSubject(teacherId, subjectId, student.kelas);
+            scheduleValidation = await this.validateTeacherSubject(teacher.id, subjectId, student.kelas);
          }
 
          if (!scheduleValidation.valid) {
@@ -205,7 +225,7 @@ class AttendanceService {
          const today = dayjs().format('YYYY-MM-DD');
          const existingAttendance = await DB.from("attendance_records")
             .join("attendance_sessions", "attendance_records.attendance_session_id", "attendance_sessions.id")
-            .where("attendance_records.student_id", student.id)
+            .where("attendance_records.student_id", student.user_id) // Use student.user_id for foreign key constraint
             .where("attendance_sessions.attendance_date", today)
             .where("attendance_sessions.subject_id", subjectId)
             .first();
@@ -245,7 +265,7 @@ class AttendanceService {
 
          // Create or get attendance session for today
          let session = await DB.from("attendance_sessions")
-            .where("teacher_id", teacherId)
+            .where("teacher_id", teacherUserId)
             .where("attendance_date", today)
             .where("subject_id", subjectId)
             .where("class_id", classRecord.id)
@@ -257,7 +277,7 @@ class AttendanceService {
             session = {
                id: randomUUID(),
                class_id: classRecord.id,
-               teacher_id: teacherId,
+               teacher_id: teacherUserId,
                subject_id: subjectId,
                attendance_date: today,
                qr_token: randomUUID(), // Not used in new flow but required by schema
@@ -275,7 +295,7 @@ class AttendanceService {
          const attendanceRecord = {
             id: randomUUID(),
             attendance_session_id: session.id,
-            student_id: student.id,
+            student_id: student.user_id, // Use student.user_id for foreign key constraint
             status: 'present' as const,
             scanned_at: new Date(),
             created_at: dayjs().valueOf(),
@@ -382,6 +402,7 @@ class AttendanceService {
       let query = DB.from("attendance_sessions")
          .leftJoin("attendance_records", "attendance_sessions.id", "attendance_records.attendance_session_id")
          .leftJoin("users", "attendance_records.student_id", "users.id")
+         .leftJoin("students", "users.id", "students.user_id") // Join to get student details
          .where("attendance_sessions.class_id", classId);
 
       if (date) {
@@ -394,7 +415,7 @@ class AttendanceService {
          "attendance_records.status",
          "attendance_records.scanned_at",
          "users.name as student_name",
-         "users.student_id as student_number"
+         "students.nipd as student_number" // Use students.nipd instead of users.student_id
       );
    }
 
@@ -441,16 +462,18 @@ class AttendanceService {
 
    /**
     * Validate teacher schedule with specific schedule ID and class ID
+    * Note: Day and time validation removed to allow attendance at any time
     */
    async validateSpecificTeacherSchedule(teacherId: string, subjectId: string, scheduleId: string, classId: string): Promise<{ valid: boolean, message: string }> {
       try {
          // Check if the teacher is assigned to this specific schedule
+         // Removed schedule active validation (.where("is_active", true)) to allow attendance anytime
          const schedule = await DB.from("subject_classes")
             .where("id", scheduleId)
             .where("teacher_id", teacherId)
             .where("subject_id", subjectId)
             .where("class_id", classId)
-            .where("is_active", true)
+            // .where("is_active", true) // REMOVED: Schedule active validation
             .first();
 
          if (!schedule) {
@@ -460,17 +483,17 @@ class AttendanceService {
             };
          }
 
-         // Check if it's the right day and time
-         const now = new Date();
-         const dayNames = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
-         const currentDay = dayNames[now.getDay()];
-
-         if (schedule.day !== currentDay) {
-            return {
-               valid: false,
-               message: `Jadwal ini untuk hari ${schedule.day}, bukan hari ${currentDay}`
-            };
-         }
+         // REMOVED: Day and time validation to allow attendance anytime
+         // const now = new Date();
+         // const dayNames = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+         // const currentDay = dayNames[now.getDay()];
+         //
+         // if (schedule.day !== currentDay) {
+         //    return {
+         //       valid: false,
+         //       message: `Jadwal ini untuk hari ${schedule.day}, bukan hari ${currentDay}`
+         //    };
+         // }
 
          return {
             valid: true,

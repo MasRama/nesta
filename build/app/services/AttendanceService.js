@@ -73,14 +73,13 @@ class AttendanceService {
                 .where("sc.teacher_id", teacherId)
                 .where("s.id", subjectId)
                 .where("c.name", studentClass)
-                .where("sc.is_active", true)
                 .where("s.is_active", true)
                 .select("sc.*", "s.id as subject_id", "s.nama as subject_name", "s.kode as subject_code", "c.name as class_name")
                 .first();
             if (!schedule) {
                 return {
                     valid: false,
-                    message: `Anda tidak mengampu mata pelajaran ini untuk kelas ${studentClass} atau jadwal tidak aktif.`
+                    message: `Anda tidak mengampu mata pelajaran ini untuk kelas ${studentClass}.`
                 };
             }
             return {
@@ -97,7 +96,7 @@ class AttendanceService {
             };
         }
     }
-    async scanStudentQR(qrData, teacherId, subjectId, scheduleId, classId) {
+    async scanStudentQR(qrData, teacherUserId, subjectId, scheduleId, classId) {
         try {
             const qrParts = qrData.split('_');
             if (qrParts.length < 2) {
@@ -119,12 +118,22 @@ class AttendanceService {
                     message: `Siswa dengan NSID ${nsid} dan nama ${namaLengkap} tidak ditemukan atau tidak aktif`
                 };
             }
+            const teacher = await DB_1.default.from("teachers")
+                .where("user_id", teacherUserId)
+                .where("is_active", true)
+                .first();
+            if (!teacher) {
+                return {
+                    success: false,
+                    message: "Data guru tidak ditemukan atau tidak aktif"
+                };
+            }
             let scheduleValidation;
             if (scheduleId && classId) {
-                scheduleValidation = await this.validateSpecificTeacherSchedule(teacherId, subjectId, scheduleId, classId);
+                scheduleValidation = await this.validateSpecificTeacherSchedule(teacher.id, subjectId, scheduleId, classId);
             }
             else {
-                scheduleValidation = await this.validateTeacherSubject(teacherId, subjectId, student.kelas);
+                scheduleValidation = await this.validateTeacherSubject(teacher.id, subjectId, student.kelas);
             }
             if (!scheduleValidation.valid) {
                 return {
@@ -135,7 +144,7 @@ class AttendanceService {
             const today = (0, dayjs_1.default)().format('YYYY-MM-DD');
             const existingAttendance = await DB_1.default.from("attendance_records")
                 .join("attendance_sessions", "attendance_records.attendance_session_id", "attendance_sessions.id")
-                .where("attendance_records.student_id", student.id)
+                .where("attendance_records.student_id", student.user_id)
                 .where("attendance_sessions.attendance_date", today)
                 .where("attendance_sessions.subject_id", subjectId)
                 .first();
@@ -166,7 +175,7 @@ class AttendanceService {
                 await DB_1.default.table("classes").insert(classRecord);
             }
             let session = await DB_1.default.from("attendance_sessions")
-                .where("teacher_id", teacherId)
+                .where("teacher_id", teacherUserId)
                 .where("attendance_date", today)
                 .where("subject_id", subjectId)
                 .where("class_id", classRecord.id)
@@ -176,7 +185,7 @@ class AttendanceService {
                 session = {
                     id: (0, crypto_1.randomUUID)(),
                     class_id: classRecord.id,
-                    teacher_id: teacherId,
+                    teacher_id: teacherUserId,
                     subject_id: subjectId,
                     attendance_date: today,
                     qr_token: (0, crypto_1.randomUUID)(),
@@ -191,7 +200,7 @@ class AttendanceService {
             const attendanceRecord = {
                 id: (0, crypto_1.randomUUID)(),
                 attendance_session_id: session.id,
-                student_id: student.id,
+                student_id: student.user_id,
                 status: 'present',
                 scanned_at: new Date(),
                 created_at: (0, dayjs_1.default)().valueOf(),
@@ -273,11 +282,12 @@ class AttendanceService {
         let query = DB_1.default.from("attendance_sessions")
             .leftJoin("attendance_records", "attendance_sessions.id", "attendance_records.attendance_session_id")
             .leftJoin("users", "attendance_records.student_id", "users.id")
+            .leftJoin("students", "users.id", "students.user_id")
             .where("attendance_sessions.class_id", classId);
         if (date) {
             query = query.where("attendance_sessions.attendance_date", date);
         }
-        return query.select("attendance_sessions.*", "attendance_records.student_id", "attendance_records.status", "attendance_records.scanned_at", "users.name as student_name", "users.student_id as student_number");
+        return query.select("attendance_sessions.*", "attendance_records.student_id", "attendance_records.status", "attendance_records.scanned_at", "users.name as student_name", "students.nipd as student_number");
     }
     async getStudentAttendance(studentId, limit = 20) {
         return DB_1.default.from("attendance_records")
@@ -311,21 +321,11 @@ class AttendanceService {
                 .where("teacher_id", teacherId)
                 .where("subject_id", subjectId)
                 .where("class_id", classId)
-                .where("is_active", true)
                 .first();
             if (!schedule) {
                 return {
                     valid: false,
                     message: "Anda tidak memiliki akses untuk mengajar mata pelajaran ini pada jadwal yang dipilih"
-                };
-            }
-            const now = new Date();
-            const dayNames = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
-            const currentDay = dayNames[now.getDay()];
-            if (schedule.day !== currentDay) {
-                return {
-                    valid: false,
-                    message: `Jadwal ini untuk hari ${schedule.day}, bukan hari ${currentDay}`
                 };
             }
             return {
