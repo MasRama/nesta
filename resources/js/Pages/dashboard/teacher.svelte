@@ -1455,7 +1455,9 @@
                   </div>
                {/if}
                <p class="text-sm text-gray-600 mb-4">
-                  Arahkan kamera ke QR code murid dengan format: NSID_Nama Lengkap
+                  Arahkan kamera ke QR code murid. Format yang didukung:<br>
+                  • <span class="font-medium">NIPD_Nama Lengkap</span> (contoh: 2024070001_Ahmad Budi)<br>
+                  • <span class="font-medium">NIPD saja</span> (contoh: 2024070001)
                </p>
 
                <!-- QR Scanner -->

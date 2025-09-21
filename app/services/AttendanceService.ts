@@ -156,8 +156,10 @@ class AttendanceService {
 
    /**
     * Scan student QR code for attendance (Teacher scans student QR)
-    * QR format expected: NSID_Nama Lengkap (e.g., NSID001_Ahmad Budi Santoso)
-    * @param qrData QR code data in format NSID_Nama Lengkap
+    * QR format supported:
+    * - NIPD_Nama Lengkap (e.g., 2024070001_Ahmad Budi Santoso) - More secure with double validation
+    * - NIPD only (e.g., 2024070001) - Simple format with single validation
+    * @param qrData QR code data in format NIPD_Nama Lengkap or NIPD only
     * @param teacherUserId User ID of the teacher (from users table) - used for attendance_sessions
     * @param subjectId Subject ID
     * @param scheduleId Optional schedule ID
@@ -165,30 +167,64 @@ class AttendanceService {
     */
    async scanStudentQR(qrData: string, teacherUserId: string, subjectId: string, scheduleId?: string, classId?: string): Promise<{ success: boolean, message: string, attendance?: AttendanceRecord, student?: any }> {
       try {
-         // Parse QR data format: NSID_Nama Lengkap
-         const qrParts = qrData.split('_');
-         if (qrParts.length < 2) {
+         // Trim the QR data
+         const trimmedQrData = qrData.trim();
+
+         // Check if QR data is empty
+         if (!trimmedQrData) {
             return {
                success: false,
-               message: "Format QR code tidak valid. Format yang benar: NSID_Nama Lengkap"
+               message: "QR code tidak boleh kosong"
             };
          }
 
-         const nsid = qrParts[0].trim();
-         const namaLengkap = qrParts.slice(1).join('_').trim(); // Handle names with underscores
+         let student;
+         let nipd: string;
+         let namaLengkap: string | null = null;
 
-         // Validate student exists in database
-         const student = await DB.from("students")
-            .where("nipd", nsid)
-            .where("nama", namaLengkap)
-            .where("is_active", true)
-            .first();
+         // Detect QR format: check if contains underscore
+         if (trimmedQrData.includes('_')) {
+            // Format: NIPD_Nama Lengkap (double validation)
+            const qrParts = trimmedQrData.split('_');
+            if (qrParts.length < 2) {
+               return {
+                  success: false,
+                  message: "Format QR code tidak valid. Format yang didukung: NIPD_Nama Lengkap atau NIPD saja"
+               };
+            }
 
-         if (!student) {
-            return {
-               success: false,
-               message: `Siswa dengan NSID ${nsid} dan nama ${namaLengkap} tidak ditemukan atau tidak aktif`
-            };
+            nipd = qrParts[0].trim();
+            namaLengkap = qrParts.slice(1).join('_').trim(); // Handle names with underscores
+
+            // Validate student exists with both NIPD and name
+            student = await DB.from("students")
+               .where("nipd", nipd)
+               .where("nama", namaLengkap)
+               .where("is_active", true)
+               .first();
+
+            if (!student) {
+               return {
+                  success: false,
+                  message: `Siswa dengan NIPD ${nipd} dan nama ${namaLengkap} tidak ditemukan atau tidak aktif`
+               };
+            }
+         } else {
+            // Format: NIPD only (single validation)
+            nipd = trimmedQrData;
+
+            // Validate student exists with NIPD only
+            student = await DB.from("students")
+               .where("nipd", nipd)
+               .where("is_active", true)
+               .first();
+
+            if (!student) {
+               return {
+                  success: false,
+                  message: `Siswa dengan NIPD ${nipd} tidak ditemukan atau tidak aktif`
+               };
+            }
          }
 
          // Get teacher record from user_id for validation purposes
@@ -304,9 +340,13 @@ class AttendanceService {
 
          await DB.table("attendance_records").insert(attendanceRecord);
 
+         // Create success message based on QR format used
+         const formatUsed = namaLengkap ? "NIPD + Nama" : "NIPD";
+         const successMessage = `Absensi ${student.nama} (${student.nipd}) berhasil dicatat [Format: ${formatUsed}]`;
+
          return {
             success: true,
-            message: `Absensi ${student.nama} (${student.nipd}) berhasil dicatat`,
+            message: successMessage,
             attendance: attendanceRecord,
             student: {
                id: student.id,
