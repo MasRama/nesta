@@ -366,6 +366,296 @@ class AttendanceService {
             updated_at: (0, dayjs_1.default)().valueOf()
         });
     }
+    async getTeacherAttendanceSessions(teacherUserId, date, subjectId, classId) {
+        let query = DB_1.default.from("attendance_sessions as as")
+            .leftJoin("subjects as s", "as.subject_id", "s.id")
+            .leftJoin("classes as c", "as.class_id", "c.id")
+            .where("as.teacher_id", teacherUserId);
+        if (date) {
+            query = query.where("as.attendance_date", date);
+        }
+        else {
+            query = query.where("as.attendance_date", (0, dayjs_1.default)().format('YYYY-MM-DD'));
+        }
+        if (subjectId) {
+            query = query.where("as.subject_id", subjectId);
+        }
+        if (classId) {
+            query = query.where("as.class_id", classId);
+        }
+        const sessions = await query.select("as.*", "s.nama as subject_name", "s.kode as subject_code", "c.name as class_name", "c.grade_level").orderBy("as.created_at", "desc");
+        for (const session of sessions) {
+            const attendanceRecords = await DB_1.default.from("attendance_records as ar")
+                .leftJoin("users as u", "ar.student_id", "u.id")
+                .leftJoin("students as st", "u.id", "st.user_id")
+                .where("ar.attendance_session_id", session.id)
+                .select("ar.*", "u.name as student_name", "st.nipd as student_number", "st.kelas as student_class")
+                .orderBy("u.name");
+            session.attendance_records = attendanceRecords;
+            session.total_present = attendanceRecords.filter(r => r.status === 'present').length;
+            session.total_absent = attendanceRecords.filter(r => r.status === 'absent').length;
+            session.total_late = attendanceRecords.filter(r => r.status === 'late').length;
+            session.total_excused = attendanceRecords.filter(r => r.status === 'excused').length;
+        }
+        return sessions;
+    }
+    async getClassStudentsForAttendance(classId, subjectId, date) {
+        const targetDate = date || (0, dayjs_1.default)().format('YYYY-MM-DD');
+        const students = await DB_1.default.from("student_classes as sc")
+            .join("students as st", "sc.student_id", "st.user_id")
+            .join("users as u", "st.user_id", "u.id")
+            .where("sc.class_id", classId)
+            .where("sc.is_active", true)
+            .where("st.is_active", true)
+            .select("st.*", "u.name as student_name", "u.id as user_id")
+            .orderBy("st.nipd");
+        for (const student of students) {
+            let attendanceQuery = DB_1.default.from("attendance_records as ar")
+                .join("attendance_sessions as as", "ar.attendance_session_id", "as.id")
+                .where("ar.student_id", student.user_id)
+                .where("as.attendance_date", targetDate);
+            if (subjectId) {
+                attendanceQuery = attendanceQuery.where("as.subject_id", subjectId);
+            }
+            const attendanceRecord = await attendanceQuery
+                .select("ar.*", "as.subject_id")
+                .first();
+            student.attendance_status = attendanceRecord?.status || 'not_marked';
+            student.attendance_id = attendanceRecord?.id || null;
+            student.attendance_notes = attendanceRecord?.notes || null;
+            student.scanned_at = attendanceRecord?.scanned_at || null;
+        }
+        return students;
+    }
+    async manualAttendance(studentId, sessionId, status, notes, _teacherUserId) {
+        try {
+            const session = await DB_1.default.from("attendance_sessions")
+                .where("id", sessionId)
+                .first();
+            if (!session) {
+                return { success: false, message: "Sesi absensi tidak ditemukan" };
+            }
+            const existingRecord = await DB_1.default.from("attendance_records")
+                .where("attendance_session_id", sessionId)
+                .where("student_id", studentId)
+                .first();
+            let attendanceRecord;
+            if (existingRecord) {
+                await DB_1.default.from("attendance_records")
+                    .where("id", existingRecord.id)
+                    .update({
+                    status,
+                    notes,
+                    updated_at: (0, dayjs_1.default)().valueOf()
+                });
+                attendanceRecord = await DB_1.default.from("attendance_records")
+                    .where("id", existingRecord.id)
+                    .first();
+            }
+            else {
+                attendanceRecord = {
+                    id: (0, crypto_1.randomUUID)(),
+                    attendance_session_id: sessionId,
+                    student_id: studentId,
+                    status,
+                    notes,
+                    scanned_at: status === 'present' ? new Date() : null,
+                    created_at: (0, dayjs_1.default)().valueOf(),
+                    updated_at: (0, dayjs_1.default)().valueOf()
+                };
+                await DB_1.default.table("attendance_records").insert(attendanceRecord);
+            }
+            const student = await DB_1.default.from("users")
+                .where("id", studentId)
+                .first();
+            return {
+                success: true,
+                message: `Absensi ${student?.name || 'siswa'} berhasil ${existingRecord ? 'diperbarui' : 'dicatat'} sebagai ${status}`,
+                attendance: attendanceRecord
+            };
+        }
+        catch (error) {
+            console.error("Error in manual attendance:", error);
+            return {
+                success: false,
+                message: "Terjadi kesalahan saat mengelola absensi manual"
+            };
+        }
+    }
+    async updateAttendanceRecord(attendanceId, status, notes) {
+        try {
+            const existingRecord = await DB_1.default.from("attendance_records")
+                .where("id", attendanceId)
+                .first();
+            if (!existingRecord) {
+                return { success: false, message: "Record absensi tidak ditemukan" };
+            }
+            await DB_1.default.from("attendance_records")
+                .where("id", attendanceId)
+                .update({
+                status,
+                notes,
+                updated_at: (0, dayjs_1.default)().valueOf()
+            });
+            const updatedRecord = await DB_1.default.from("attendance_records")
+                .where("id", attendanceId)
+                .first();
+            return {
+                success: true,
+                message: "Record absensi berhasil diperbarui",
+                attendance: updatedRecord
+            };
+        }
+        catch (error) {
+            console.error("Error updating attendance record:", error);
+            return {
+                success: false,
+                message: "Terjadi kesalahan saat memperbarui record absensi"
+            };
+        }
+    }
+    async getTeacherAttendanceStats(teacherUserId, period, subjectId, classId) {
+        try {
+            let startDate;
+            let endDate;
+            const today = (0, dayjs_1.default)();
+            switch (period) {
+                case 'week':
+                    startDate = today.startOf('week').format('YYYY-MM-DD');
+                    endDate = today.endOf('week').format('YYYY-MM-DD');
+                    break;
+                case 'month':
+                    startDate = today.startOf('month').format('YYYY-MM-DD');
+                    endDate = today.endOf('month').format('YYYY-MM-DD');
+                    break;
+                case 'today':
+                default:
+                    startDate = today.format('YYYY-MM-DD');
+                    endDate = today.format('YYYY-MM-DD');
+                    break;
+            }
+            let query = DB_1.default.from("attendance_sessions as as")
+                .leftJoin("attendance_records as ar", "as.id", "ar.attendance_session_id")
+                .leftJoin("subjects as s", "as.subject_id", "s.id")
+                .leftJoin("classes as c", "as.class_id", "c.id")
+                .where("as.teacher_id", teacherUserId)
+                .whereBetween("as.attendance_date", [startDate, endDate]);
+            if (subjectId) {
+                query = query.where("as.subject_id", subjectId);
+            }
+            if (classId) {
+                query = query.where("as.class_id", classId);
+            }
+            const overallStats = await query.clone()
+                .select("ar.status")
+                .count("* as count")
+                .groupBy("ar.status");
+            const subjectStats = await query.clone()
+                .select("s.nama as subject_name", "ar.status")
+                .count("* as count")
+                .groupBy("s.nama", "ar.status");
+            const classStats = await query.clone()
+                .select("c.name as class_name", "ar.status")
+                .count("* as count")
+                .groupBy("c.name", "ar.status");
+            const dailyStats = await query.clone()
+                .select("as.attendance_date", "ar.status")
+                .count("* as count")
+                .groupBy("as.attendance_date", "ar.status")
+                .orderBy("as.attendance_date");
+            const frequentAbsences = await DB_1.default.from("attendance_records as ar")
+                .join("attendance_sessions as as", "ar.attendance_session_id", "as.id")
+                .join("users as u", "ar.student_id", "u.id")
+                .join("students as st", "u.id", "st.user_id")
+                .where("as.teacher_id", teacherUserId)
+                .where("ar.status", 'absent')
+                .whereBetween("as.attendance_date", [startDate, endDate])
+                .select("u.name as student_name", "st.nipd as student_number")
+                .count("* as absent_count")
+                .groupBy("u.id", "u.name", "st.nipd")
+                .having("absent_count", ">=", 3)
+                .orderBy("absent_count", "desc");
+            return {
+                period: period || 'today',
+                date_range: { start: startDate, end: endDate },
+                overall: overallStats.reduce((acc, stat) => {
+                    acc[stat.status] = stat.count;
+                    return acc;
+                }, {}),
+                by_subject: this.groupStatsByCategory(subjectStats, 'subject_name'),
+                by_class: this.groupStatsByCategory(classStats, 'class_name'),
+                daily: this.groupDailyStats(dailyStats),
+                frequent_absences: frequentAbsences
+            };
+        }
+        catch (error) {
+            console.error("Error getting teacher attendance stats:", error);
+            throw error;
+        }
+    }
+    groupStatsByCategory(stats, categoryField) {
+        const grouped = {};
+        stats.forEach(stat => {
+            const category = stat[categoryField];
+            if (!grouped[category]) {
+                grouped[category] = {};
+            }
+            grouped[category][stat.status] = stat.count;
+        });
+        return grouped;
+    }
+    groupDailyStats(stats) {
+        const grouped = {};
+        stats.forEach(stat => {
+            const date = stat.attendance_date;
+            if (!grouped[date]) {
+                grouped[date] = {};
+            }
+            grouped[date][stat.status] = stat.count;
+        });
+        return grouped;
+    }
+    async exportAttendanceData(classId, subjectId, startDate, endDate, format) {
+        try {
+            const start = startDate || (0, dayjs_1.default)().startOf('month').format('YYYY-MM-DD');
+            const end = endDate || (0, dayjs_1.default)().endOf('month').format('YYYY-MM-DD');
+            let query = DB_1.default.from("attendance_sessions as as")
+                .leftJoin("attendance_records as ar", "as.id", "ar.attendance_session_id")
+                .leftJoin("users as u", "ar.student_id", "u.id")
+                .leftJoin("students as st", "u.id", "st.user_id")
+                .leftJoin("subjects as s", "as.subject_id", "s.id")
+                .leftJoin("classes as c", "as.class_id", "c.id")
+                .where("as.class_id", classId)
+                .whereBetween("as.attendance_date", [start, end]);
+            if (subjectId) {
+                query = query.where("as.subject_id", subjectId);
+            }
+            const data = await query.select("as.attendance_date", "s.nama as subject_name", "c.name as class_name", "u.name as student_name", "st.nipd as student_number", "ar.status", "ar.scanned_at", "ar.notes").orderBy("as.attendance_date").orderBy("u.name");
+            if (format === 'excel') {
+                return {
+                    headers: [
+                        'Tanggal', 'Mata Pelajaran', 'Kelas', 'Nama Siswa',
+                        'NIPD', 'Status', 'Waktu Scan', 'Catatan'
+                    ],
+                    data: data.map(row => [
+                        row.attendance_date,
+                        row.subject_name,
+                        row.class_name,
+                        row.student_name,
+                        row.student_number,
+                        row.status,
+                        row.scanned_at ? (0, dayjs_1.default)(row.scanned_at).format('HH:mm:ss') : '',
+                        row.notes || ''
+                    ])
+                };
+            }
+            return data;
+        }
+        catch (error) {
+            console.error("Error exporting attendance data:", error);
+            throw error;
+        }
+    }
 }
 exports.default = new AttendanceService();
 //# sourceMappingURL=AttendanceService.js.map

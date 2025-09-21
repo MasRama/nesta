@@ -43,6 +43,12 @@ Route.get("/api/attendance/class/:class_id", [auth_1.default, roleAuth_1.default
 Route.get("/api/attendance/student/:student_id", [auth_1.default], AttendanceController_1.default.getStudentAttendance);
 Route.get("/api/attendance/stats/:student_id", [auth_1.default], AttendanceController_1.default.getAttendanceStats);
 Route.post("/api/attendance/close/:session_id", [auth_1.default, roleAuth_1.default.teacher()], AttendanceController_1.default.closeSession);
+Route.get("/api/attendance/teacher/sessions", [auth_1.default, roleAuth_1.default.teacher()], AttendanceController_1.default.getTeacherAttendanceSessions);
+Route.get("/api/attendance/class/:class_id/students", [auth_1.default, roleAuth_1.default.teacherOrAdmin()], AttendanceController_1.default.getClassStudentsForAttendance);
+Route.post("/api/attendance/manual", [auth_1.default, roleAuth_1.default.teacher()], AttendanceController_1.default.manualAttendance);
+Route.put("/api/attendance/record/:attendance_id", [auth_1.default, roleAuth_1.default.teacher()], AttendanceController_1.default.updateAttendance);
+Route.get("/api/attendance/teacher/stats", [auth_1.default, roleAuth_1.default.teacher()], AttendanceController_1.default.getTeacherAttendanceStats);
+Route.get("/api/attendance/export", [auth_1.default, roleAuth_1.default.teacherOrAdmin()], AttendanceController_1.default.exportAttendanceData);
 Route.get("/journal/create", [auth_1.default, roleAuth_1.default.teacher()], JournalController_1.default.createPage);
 Route.post("/journal", [auth_1.default, roleAuth_1.default.teacher()], JournalController_1.default.create);
 Route.get("/journal/:journal_id/edit", [auth_1.default, roleAuth_1.default.teacher()], JournalController_1.default.editPage);

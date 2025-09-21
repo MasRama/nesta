@@ -2,6 +2,7 @@
    import { router } from '@inertiajs/svelte';
    import { onMount } from 'svelte';
    import { Html5QrcodeScanner } from 'html5-qrcode';
+   import AttendanceManagement from '../../components/AttendanceManagement.svelte';
    
    export let user;
    export let teacherSubjects = [];
@@ -428,7 +429,7 @@
                   <span>Ringkasan</span>
                </div>
             </button>
-            <button 
+            <button
                class="px-6 py-3 rounded-xl font-medium text-sm nav-btn-enhanced"
                class:bg-gradient-to-r={currentSection === 'attendance'}
                class:from-blue-600={currentSection === 'attendance'}
@@ -443,7 +444,25 @@
                   <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
                   </svg>
-                  <span>Absensi</span>
+                  <span>Scan QR</span>
+               </div>
+            </button>
+            <button
+               class="px-6 py-3 rounded-xl font-medium text-sm nav-btn-enhanced"
+               class:bg-gradient-to-r={currentSection === 'attendance-management'}
+               class:from-blue-600={currentSection === 'attendance-management'}
+               class:to-indigo-600={currentSection === 'attendance-management'}
+               class:text-white={currentSection === 'attendance-management'}
+               class:shadow-lg={currentSection === 'attendance-management'}
+               class:text-gray-600={currentSection !== 'attendance-management'}
+               class:hover:bg-blue-50={currentSection !== 'attendance-management'}
+               on:click={() => navigateToSection('attendance-management')}
+            >
+               <div class="flex items-center space-x-2">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/>
+                  </svg>
+                  <span>Kelola Absensi</span>
                </div>
             </button>
             <button 
@@ -1001,6 +1020,13 @@
                   </div>
                </div>
             </div>
+         </div>
+      {/if}
+
+      {#if currentSection === 'attendance-management'}
+         <!-- Attendance Management Section -->
+         <div class="px-4 py-6 sm:px-0">
+            <AttendanceManagement {user} {teacherSubjects} />
          </div>
       {/if}
 

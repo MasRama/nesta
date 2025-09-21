@@ -246,6 +246,216 @@ class AttendanceController {
          return response.status(500).json({ error: "Failed to close attendance session" });
       }
    }
+
+   /**
+    * Get teacher's attendance sessions with student lists
+    */
+   public async getTeacherAttendanceSessions(request: Request, response: Response) {
+      try {
+         const { date, subject_id, class_id } = request.query;
+
+         // Ensure user is a teacher
+         if (request.user.role !== 'teacher') {
+            return response.status(403).json({ error: "Only teachers can access attendance sessions" });
+         }
+
+         // Get teacher record
+         const teacher = await DB.from('teachers')
+            .where('user_id', request.user.id)
+            .where('is_active', true)
+            .first();
+
+         if (!teacher) {
+            return response.status(404).json({ error: "Teacher data not found" });
+         }
+
+         const sessions = await AttendanceService.getTeacherAttendanceSessions(
+            teacher.user_id,
+            date as string,
+            subject_id as string,
+            class_id as string
+         );
+
+         return response.json({ sessions });
+      } catch (error) {
+         console.error("Error getting teacher attendance sessions:", error);
+         return response.status(500).json({ error: "Failed to get attendance sessions" });
+      }
+   }
+
+   /**
+    * Get students in class for attendance management
+    */
+   public async getClassStudentsForAttendance(request: Request, response: Response) {
+      try {
+         const { class_id } = request.params;
+         const { subject_id, date } = request.query;
+
+         // Check access permissions
+         const canAccess = await RoleAuth.canAccessClass(request, class_id);
+         if (!canAccess) {
+            return response.status(403).json({ error: "Unauthorized access to class" });
+         }
+
+         const students = await AttendanceService.getClassStudentsForAttendance(
+            class_id,
+            subject_id as string,
+            date as string
+         );
+
+         return response.json({ students });
+      } catch (error) {
+         console.error("Error getting class students for attendance:", error);
+         return response.status(500).json({ error: "Failed to get class students" });
+      }
+   }
+
+   /**
+    * Manual attendance management - mark student attendance
+    */
+   public async manualAttendance(request: Request, response: Response) {
+      try {
+         const { student_id, session_id, status, notes } = await request.json();
+
+         // Ensure user is a teacher
+         if (request.user.role !== 'teacher') {
+            return response.status(403).json({ error: "Only teachers can manage attendance manually" });
+         }
+
+         // Get teacher record
+         const teacher = await DB.from('teachers')
+            .where('user_id', request.user.id)
+            .where('is_active', true)
+            .first();
+
+         if (!teacher) {
+            return response.status(404).json({ error: "Teacher data not found" });
+         }
+
+         const result = await AttendanceService.manualAttendance(
+            student_id,
+            session_id,
+            status,
+            notes,
+            teacher.user_id
+         );
+
+         if (result.success) {
+            return response.json({
+               message: result.message,
+               attendance: result.attendance
+            });
+         } else {
+            return response.status(400).json({ error: result.message });
+         }
+      } catch (error) {
+         console.error("Error managing manual attendance:", error);
+         return response.status(500).json({ error: "Failed to manage attendance" });
+      }
+   }
+
+   /**
+    * Update attendance record
+    */
+   public async updateAttendance(request: Request, response: Response) {
+      try {
+         const { attendance_id } = request.params;
+         const { status, notes } = await request.json();
+
+         // Ensure user is a teacher
+         if (request.user.role !== 'teacher') {
+            return response.status(403).json({ error: "Only teachers can update attendance" });
+         }
+
+         const result = await AttendanceService.updateAttendanceRecord(
+            attendance_id,
+            status,
+            notes
+         );
+
+         if (result.success) {
+            return response.json({
+               message: result.message,
+               attendance: result.attendance
+            });
+         } else {
+            return response.status(400).json({ error: result.message });
+         }
+      } catch (error) {
+         console.error("Error updating attendance:", error);
+         return response.status(500).json({ error: "Failed to update attendance" });
+      }
+   }
+
+   /**
+    * Get attendance statistics for teacher's classes
+    */
+   public async getTeacherAttendanceStats(request: Request, response: Response) {
+      try {
+         const { period, subject_id, class_id } = request.query;
+
+         // Ensure user is a teacher
+         if (request.user.role !== 'teacher') {
+            return response.status(403).json({ error: "Only teachers can access attendance statistics" });
+         }
+
+         // Get teacher record
+         const teacher = await DB.from('teachers')
+            .where('user_id', request.user.id)
+            .where('is_active', true)
+            .first();
+
+         if (!teacher) {
+            return response.status(404).json({ error: "Teacher data not found" });
+         }
+
+         const stats = await AttendanceService.getTeacherAttendanceStats(
+            teacher.user_id,
+            period as string,
+            subject_id as string,
+            class_id as string
+         );
+
+         return response.json({ stats });
+      } catch (error) {
+         console.error("Error getting teacher attendance stats:", error);
+         return response.status(500).json({ error: "Failed to get attendance statistics" });
+      }
+   }
+
+   /**
+    * Export attendance data to Excel
+    */
+   public async exportAttendanceData(request: Request, response: Response) {
+      try {
+         const { class_id, subject_id, start_date, end_date, format } = request.query;
+
+         // Check access permissions
+         const canAccess = await RoleAuth.canAccessClass(request, class_id as string);
+         if (!canAccess) {
+            return response.status(403).json({ error: "Unauthorized access to class" });
+         }
+
+         const exportData = await AttendanceService.exportAttendanceData(
+            class_id as string,
+            subject_id as string,
+            start_date as string,
+            end_date as string,
+            format as string
+         );
+
+         if (format === 'excel') {
+            response.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+            response.setHeader('Content-Disposition', `attachment; filename=attendance-${class_id}-${Date.now()}.xlsx`);
+            return response.send(exportData);
+         } else {
+            return response.json({ data: exportData });
+         }
+      } catch (error) {
+         console.error("Error exporting attendance data:", error);
+         return response.status(500).json({ error: "Failed to export attendance data" });
+      }
+   }
 }
 
 export default new AttendanceController();

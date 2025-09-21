@@ -84,6 +84,14 @@ Route.get("/dashboard/admin", [Auth, RoleAuth.admin()], SchoolAuthController.get
  * GET   /api/attendance/stats/:student_id - Get attendance statistics
  * GET   /api/attendance/today-schedules - Get teacher's schedules for today (Teacher)
  * POST  /api/attendance/close/:session_id - Close attendance session
+ *
+ * NEW ATTENDANCE MANAGEMENT ROUTES:
+ * GET   /api/attendance/teacher/sessions - Get teacher's attendance sessions with student lists
+ * GET   /api/attendance/class/:class_id/students - Get students in class for attendance management
+ * POST  /api/attendance/manual - Manual attendance management
+ * PUT   /api/attendance/record/:attendance_id - Update attendance record
+ * GET   /api/attendance/teacher/stats - Get attendance statistics for teacher's classes
+ * GET   /api/attendance/export - Export attendance data to Excel/JSON
  */
 Route.post("/api/attendance/scan-student", [Auth, RoleAuth.teacher()], AttendanceController.scanStudentQR);
 Route.get("/api/attendance/subjects/:class_id", [Auth, RoleAuth.teacher()], AttendanceController.getAvailableSubjects);
@@ -93,6 +101,14 @@ Route.get("/api/attendance/class/:class_id", [Auth, RoleAuth.teacherOrAdmin()], 
 Route.get("/api/attendance/student/:student_id", [Auth], AttendanceController.getStudentAttendance);
 Route.get("/api/attendance/stats/:student_id", [Auth], AttendanceController.getAttendanceStats);
 Route.post("/api/attendance/close/:session_id", [Auth, RoleAuth.teacher()], AttendanceController.closeSession);
+
+// New Attendance Management Routes
+Route.get("/api/attendance/teacher/sessions", [Auth, RoleAuth.teacher()], AttendanceController.getTeacherAttendanceSessions);
+Route.get("/api/attendance/class/:class_id/students", [Auth, RoleAuth.teacherOrAdmin()], AttendanceController.getClassStudentsForAttendance);
+Route.post("/api/attendance/manual", [Auth, RoleAuth.teacher()], AttendanceController.manualAttendance);
+Route.put("/api/attendance/record/:attendance_id", [Auth, RoleAuth.teacher()], AttendanceController.updateAttendance);
+Route.get("/api/attendance/teacher/stats", [Auth, RoleAuth.teacher()], AttendanceController.getTeacherAttendanceStats);
+Route.get("/api/attendance/export", [Auth, RoleAuth.teacherOrAdmin()], AttendanceController.exportAttendanceData);
 
 /**
  * Journal Management Routes
