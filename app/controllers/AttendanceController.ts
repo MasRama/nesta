@@ -559,6 +559,249 @@ class AttendanceController {
          return response.status(500).json({ error: "Failed to export attendance data" });
       }
    }
+
+   /**
+    * Get parent's children list
+    */
+   public async getParentChildren(request: Request, response: Response) {
+      try {
+         const { parent_id } = request.params;
+
+         // Validate parent_id parameter
+         if (!parent_id) {
+            return response.status(400).json({ error: "Parent ID is required" });
+         }
+
+         // Check permissions - only parent can access their own children or admin can access any
+         if (request.user.role !== 'admin' && request.user.id !== parent_id) {
+            return response.status(403).json({ error: "Unauthorized access to parent data" });
+         }
+
+         // Additional validation: ensure parent exists and is active
+         if (request.user.role === 'parent') {
+            const parentUser = await DB.from('users')
+               .where('id', parent_id)
+               .where('role', 'parent')
+               .where('is_verified', true)
+               .first();
+
+            if (!parentUser) {
+               return response.status(404).json({ error: "Parent not found or inactive" });
+            }
+         }
+
+         const children = await AttendanceService.getParentChildren(parent_id);
+
+         return response.json({
+            children
+         });
+
+      } catch (error) {
+         console.error("Error getting parent children:", error);
+         return response.status(500).json({ error: "Internal server error" });
+      }
+   }
+
+   /**
+    * Get multi-child attendance history for parent dashboard
+    */
+   public async getParentChildrenAttendanceHistory(request: Request, response: Response) {
+      try {
+         const { parent_id } = request.params;
+         const {
+            page = 1,
+            limit = 20,
+            subject_id,
+            start_date,
+            end_date,
+            class_id,
+            child_id
+         } = request.query;
+
+         // Validate parent_id parameter
+         if (!parent_id) {
+            return response.status(400).json({ error: "Parent ID is required" });
+         }
+
+         // Check permissions - only parent can access their own children or admin can access any
+         if (request.user.role !== 'admin' && request.user.id !== parent_id) {
+            return response.status(403).json({ error: "Unauthorized access to parent data" });
+         }
+
+         // Validate pagination parameters
+         const pageNum = parseInt(page as string);
+         const limitNum = parseInt(limit as string);
+
+         if (isNaN(pageNum) || pageNum < 1) {
+            return response.status(400).json({ error: "Invalid page number" });
+         }
+
+         if (isNaN(limitNum) || limitNum < 1 || limitNum > 100) {
+            return response.status(400).json({ error: "Invalid limit. Must be between 1 and 100" });
+         }
+
+         // Additional validation: ensure parent exists and is active
+         if (request.user.role === 'parent') {
+            const parentUser = await DB.from('users')
+               .where('id', parent_id)
+               .where('role', 'parent')
+               .where('is_verified', true)
+               .first();
+
+            if (!parentUser) {
+               return response.status(404).json({ error: "Parent not found or inactive" });
+            }
+         }
+
+         // If child_id is provided, validate that the child belongs to this parent
+         if (child_id) {
+            const canAccess = await RoleAuth.canAccessStudent(request, child_id as string);
+            if (!canAccess) {
+               return response.status(403).json({ error: "Unauthorized access to student data" });
+            }
+
+            // Double-check parent-child relationship for extra security
+            if (request.user.role === 'parent') {
+               const relation = await DB.from("parent_student_relations")
+                  .where("parent_id", parent_id)
+                  .where("student_id", child_id)
+                  .first();
+
+               if (!relation) {
+                  return response.status(403).json({ error: "Child does not belong to this parent" });
+               }
+            }
+         }
+
+         const result = await AttendanceService.getParentChildrenAttendanceHistory(parent_id, {
+            page: pageNum,
+            limit: limitNum,
+            subjectId: subject_id as string,
+            startDate: start_date as string,
+            endDate: end_date as string,
+            classId: class_id as string,
+            childId: child_id as string
+         });
+
+         return response.json(result);
+
+      } catch (error) {
+         console.error("Error getting parent children attendance history:", error);
+         if (error.message.includes("Invalid") || error.message.includes("required")) {
+            return response.status(400).json({ error: error.message });
+         }
+         return response.status(500).json({ error: "Internal server error" });
+      }
+   }
+
+   /**
+    * Get attendance statistics for parent's children (combined and per child)
+    */
+   public async getParentChildrenAttendanceStats(request: Request, response: Response) {
+      try {
+         const { parent_id } = request.params;
+         const { start_date, end_date, class_id, child_id } = request.query;
+
+         // Validate parent_id parameter
+         if (!parent_id) {
+            return response.status(400).json({ error: "Parent ID is required" });
+         }
+
+         // Check permissions - only parent can access their own children or admin can access any
+         if (request.user.role !== 'admin' && request.user.id !== parent_id) {
+            return response.status(403).json({ error: "Unauthorized access to parent data" });
+         }
+
+         // Additional validation: ensure parent exists and is active
+         if (request.user.role === 'parent') {
+            const parentUser = await DB.from('users')
+               .where('id', parent_id)
+               .where('role', 'parent')
+               .where('is_verified', true)
+               .first();
+
+            if (!parentUser) {
+               return response.status(404).json({ error: "Parent not found or inactive" });
+            }
+         }
+
+         // If child_id is provided, validate that the child belongs to this parent
+         if (child_id) {
+            const canAccess = await RoleAuth.canAccessStudent(request, child_id as string);
+            if (!canAccess) {
+               return response.status(403).json({ error: "Unauthorized access to student data" });
+            }
+
+            // Double-check parent-child relationship for extra security
+            if (request.user.role === 'parent') {
+               const relation = await DB.from("parent_student_relations")
+                  .where("parent_id", parent_id)
+                  .where("student_id", child_id)
+                  .first();
+
+               if (!relation) {
+                  return response.status(403).json({ error: "Child does not belong to this parent" });
+               }
+            }
+         }
+
+         const stats = await AttendanceService.getParentChildrenAttendanceStats(parent_id, {
+            startDate: start_date as string,
+            endDate: end_date as string,
+            classId: class_id as string,
+            childId: child_id as string
+         });
+
+         return response.json({ stats });
+
+      } catch (error) {
+         console.error("Error getting parent children attendance stats:", error);
+         if (error.message.includes("Invalid") || error.message.includes("required")) {
+            return response.status(400).json({ error: error.message });
+         }
+         return response.status(500).json({ error: "Internal server error" });
+      }
+   }
+
+   /**
+    * Get all subjects for parent's children
+    */
+   public async getParentChildrenSubjects(request: Request, response: Response) {
+      try {
+         const { parent_id } = request.params;
+
+         // Validate parent_id parameter
+         if (!parent_id) {
+            return response.status(400).json({ error: "Parent ID is required" });
+         }
+
+         // Check permissions - only parent can access their own children or admin can access any
+         if (request.user.role !== 'admin' && request.user.id !== parent_id) {
+            return response.status(403).json({ error: "Unauthorized access to parent data" });
+         }
+
+         // Additional validation: ensure parent exists and is active
+         if (request.user.role === 'parent') {
+            const parentUser = await DB.from('users')
+               .where('id', parent_id)
+               .where('role', 'parent')
+               .where('is_verified', true)
+               .first();
+
+            if (!parentUser) {
+               return response.status(404).json({ error: "Parent not found or inactive" });
+            }
+         }
+
+         const subjects = await AttendanceService.getParentChildrenSubjects(parent_id);
+
+         return response.json({ subjects });
+
+      } catch (error) {
+         console.error("Error getting parent children subjects:", error);
+         return response.status(500).json({ error: "Internal server error" });
+      }
+   }
 }
 
 export default new AttendanceController();

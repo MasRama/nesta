@@ -1,6 +1,7 @@
 import DB from "./DB";
-import { randomUUID, pbkdf2Sync } from "crypto";
+import { randomUUID } from "crypto";
 import dayjs from "dayjs";
+import Authenticate from "./Authenticate";
 
 interface ParentData {
     nama: string;
@@ -81,20 +82,35 @@ class ParentService {
     
     /**
      * Create new parent with transaction and duplicate prevention
+     * Also creates corresponding user account for login
      */
     async createParent(data: ParentData) {
-        const id = randomUUID();
-        const hashedPassword = this.hashPassword(data.password);
+        const parentId = randomUUID();
+        const userId = randomUUID();
+        const hashedPassword = await Authenticate.hash(data.password);
         const now = dayjs().valueOf();
 
         const parentData = {
-            id,
+            id: parentId,
             nama: data.nama,
             email: data.email,
             password: hashedPassword,
             phone: data.phone || null,
             notes: data.notes || null,
             is_active: true,
+            created_at: now,
+            updated_at: now
+        };
+
+        const userData = {
+            id: userId,
+            name: data.nama,
+            email: data.email,
+            phone: data.phone || null,
+            password: hashedPassword,
+            role: 'parent',
+            is_verified: true,
+            is_admin: false,
             created_at: now,
             updated_at: now
         };
@@ -112,12 +128,24 @@ class ParentService {
                 return parentWithoutPassword;
             }
 
-            // Insert new parent
+            // Check for existing user with same email
+            const existingUser = await trx.from('users')
+                .where('email', data.email)
+                .first();
+
+            if (existingUser) {
+                throw new Error('Email sudah digunakan oleh user lain');
+            }
+
+            // Insert new parent in parents table
             await trx.from('parents').insert(parentData);
+
+            // Insert corresponding user account for login
+            await trx.from('users').insert(userData);
 
             // Return the created parent without password
             const { password, ...parentWithoutPassword } = parentData;
-            return parentWithoutPassword;
+            return { ...parentWithoutPassword, user_id: userId };
         });
     }
     
@@ -132,7 +160,7 @@ class ParentService {
         
         // Hash password if provided
         if (data.password) {
-            updateData.password = this.hashPassword(data.password);
+            updateData.password = await Authenticate.hash(data.password);
         }
         
         await DB.from('parents').where('id', id).update(updateData);
@@ -245,12 +273,7 @@ class ParentService {
         return errors;
     }
     
-    /**
-     * Hash password
-     */
-    private hashPassword(password: string): string {
-        return pbkdf2Sync(password, 'salt', 1000, 64, 'sha512').toString('hex');
-    }
+
     
     /**
      * Validate email format

@@ -1,6 +1,7 @@
 <script>
    import { router } from '@inertiajs/svelte';
    import { onMount } from 'svelte';
+   import ParentAttendanceHistory from '../../components/ParentAttendanceHistory.svelte';
    
    export let user;
    export let children = [];
@@ -311,7 +312,25 @@
                   <span>Progress Akademik</span>
                </div>
             </button>
-            <button 
+            <button
+               class="px-6 py-3 rounded-xl font-medium text-sm nav-btn-enhanced"
+               class:bg-gradient-to-r={currentSection === 'attendance_history'}
+               class:from-purple-600={currentSection === 'attendance_history'}
+               class:to-indigo-600={currentSection === 'attendance_history'}
+               class:text-white={currentSection === 'attendance_history'}
+               class:shadow-lg={currentSection === 'attendance_history'}
+               class:text-gray-600={currentSection !== 'attendance_history'}
+               class:hover:bg-purple-50={currentSection !== 'attendance_history'}
+               on:click={() => navigateToSection('attendance_history')}
+            >
+               <div class="flex items-center space-x-2">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 8l2 2 4-4"/>
+                  </svg>
+                  <span>Riwayat Kehadiran</span>
+               </div>
+            </button>
+            <button
                class="px-6 py-3 rounded-xl font-medium text-sm nav-btn-enhanced"
                class:bg-gradient-to-r={currentSection === 'communication'}
                class:from-purple-600={currentSection === 'communication'}
@@ -659,6 +678,13 @@
                   <p class="text-gray-600">Silakan pilih anak terlebih dahulu untuk melihat progress akademik.</p>
                </div>
             {/if}
+         </div>
+      {/if}
+
+      {#if currentSection === 'attendance_history'}
+         <!-- Attendance History Section -->
+         <div class="px-4 py-6 sm:px-0">
+            <ParentAttendanceHistory {user} />
          </div>
       {/if}
 

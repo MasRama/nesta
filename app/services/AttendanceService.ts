@@ -1156,6 +1156,375 @@ class AttendanceService {
    }
 
    /**
+    * Get parent's children list with basic info
+    */
+   async getParentChildren(parentId: string): Promise<any[]> {
+      // Validate input
+      if (!parentId) {
+         throw new Error("Parent ID is required");
+      }
+
+      return DB.from("parent_student_relations as psr")
+         .join("users as u", "psr.student_id", "u.id")
+         .leftJoin("students as s", "u.id", "s.user_id")
+         .where("psr.parent_id", parentId)
+         .select(
+            "u.id as user_id",
+            "u.name",
+            "u.email",
+            "s.id as student_id",
+            "s.nipd",
+            "s.nama as student_name",
+            "s.kelas",
+            "psr.relationship",
+            "psr.is_primary_contact"
+         )
+         .orderBy("psr.is_primary_contact", "desc")
+         .orderBy("u.name");
+   }
+
+   /**
+    * Get multi-child attendance history for parent dashboard
+    */
+   async getParentChildrenAttendanceHistory(
+      parentId: string,
+      options: {
+         page?: number;
+         limit?: number;
+         subjectId?: string;
+         startDate?: string;
+         endDate?: string;
+         classId?: string;
+         childId?: string; // Optional filter for specific child
+      } = {}
+   ): Promise<{
+      data: any[];
+      pagination: {
+         page: number;
+         limit: number;
+         total: number;
+         totalPages: number;
+      };
+      children: any[];
+   }> {
+      // Validate input parameters
+      if (!parentId) {
+         throw new Error("Parent ID is required");
+      }
+
+      const { page = 1, limit = 20, subjectId, startDate, endDate, classId, childId } = options;
+
+      // Validate pagination parameters
+      const validatedPage = Math.max(1, Math.floor(page));
+      const validatedLimit = Math.min(100, Math.max(1, Math.floor(limit)));
+      const offset = (validatedPage - 1) * validatedLimit;
+
+      // Validate date format if provided
+      if (startDate && !this.isValidDate(startDate)) {
+         throw new Error("Invalid start date format. Use YYYY-MM-DD");
+      }
+
+      if (endDate && !this.isValidDate(endDate)) {
+         throw new Error("Invalid end date format. Use YYYY-MM-DD");
+      }
+
+      // Validate date range
+      if (startDate && endDate && new Date(startDate) > new Date(endDate)) {
+         throw new Error("Start date cannot be after end date");
+      }
+
+      // Get parent's children first
+      const children = await this.getParentChildren(parentId);
+
+      if (children.length === 0) {
+         return {
+            data: [],
+            pagination: {
+               page: validatedPage,
+               limit: validatedLimit,
+               total: 0,
+               totalPages: 0
+            },
+            children: []
+         };
+      }
+
+      // Extract child user IDs
+      const childUserIds = children.map(child => child.user_id);
+
+      // Build base query for attendance history
+      let query = DB.from("attendance_records as ar")
+         .join("attendance_sessions as as", "ar.attendance_session_id", "as.id")
+         .join("classes as c", "as.class_id", "c.id")
+         .leftJoin("subjects as s", "as.subject_id", "s.id")
+         .join("users as u", "ar.student_id", "u.id")
+         .leftJoin("students as st", "u.id", "st.user_id")
+         .whereIn("ar.student_id", childUserIds);
+
+      // Apply filters
+      if (childId) {
+         query = query.where("ar.student_id", childId);
+      }
+
+      if (subjectId) {
+         query = query.where("as.subject_id", subjectId);
+      }
+
+      if (classId) {
+         query = query.where("as.class_id", classId);
+      }
+
+      if (startDate) {
+         query = query.where("as.attendance_date", ">=", startDate);
+      }
+
+      if (endDate) {
+         query = query.where("as.attendance_date", "<=", endDate);
+      }
+
+      // Get total count for pagination
+      const totalQuery = query.clone().count("* as count").first();
+      const total = await totalQuery;
+
+      // Get paginated data with optimized select
+      const data = await query
+         .select(
+            "ar.id",
+            "ar.status",
+            "ar.scanned_at",
+            "ar.notes",
+            "ar.created_at",
+            "as.attendance_date",
+            "as.starts_at",
+            "as.expires_at",
+            "c.name as class_name",
+            "c.grade_level",
+            "s.nama as subject_name",
+            "s.kode as subject_code",
+            "u.id as student_user_id",
+            "u.name as student_name",
+            "st.nipd as student_nipd",
+            "st.kelas as student_class"
+         )
+         .orderBy("as.attendance_date", "desc")
+         .orderBy("u.name")
+         .orderBy("as.starts_at", "desc")
+         .limit(validatedLimit)
+         .offset(offset);
+
+      return {
+         data,
+         pagination: {
+            page: validatedPage,
+            limit: validatedLimit,
+            total: total?.count || 0,
+            totalPages: Math.ceil((total?.count || 0) / validatedLimit)
+         },
+         children
+      };
+   }
+
+   /**
+    * Get attendance statistics for parent's children (combined and per child)
+    */
+   async getParentChildrenAttendanceStats(
+      parentId: string,
+      options: {
+         startDate?: string;
+         endDate?: string;
+         classId?: string;
+         childId?: string;
+      } = {}
+   ): Promise<{
+      combined: any;
+      per_child: any[];
+      per_subject: any[];
+   }> {
+      // Validate input
+      if (!parentId) {
+         throw new Error("Parent ID is required");
+      }
+
+      const { startDate, endDate, classId, childId } = options;
+
+      // Validate date format if provided
+      if (startDate && !this.isValidDate(startDate)) {
+         throw new Error("Invalid start date format. Use YYYY-MM-DD");
+      }
+
+      if (endDate && !this.isValidDate(endDate)) {
+         throw new Error("Invalid end date format. Use YYYY-MM-DD");
+      }
+
+      // Get parent's children
+      const children = await this.getParentChildren(parentId);
+
+      if (children.length === 0) {
+         return {
+            combined: { present: 0, absent: 0, late: 0, excused: 0, total: 0, percentage: 0 },
+            per_child: [],
+            per_subject: []
+         };
+      }
+
+      // Extract child user IDs
+      const childUserIds = children.map(child => child.user_id);
+
+      // Build base query
+      let query = DB.from("attendance_records as ar")
+         .join("attendance_sessions as as", "ar.attendance_session_id", "as.id")
+         .join("users as u", "ar.student_id", "u.id")
+         .leftJoin("students as st", "u.id", "st.user_id")
+         .leftJoin("subjects as s", "as.subject_id", "s.id")
+         .whereIn("ar.student_id", childUserIds);
+
+      // Apply filters
+      if (childId) {
+         query = query.where("ar.student_id", childId);
+      }
+
+      if (classId) {
+         query = query.where("as.class_id", classId);
+      }
+
+      if (startDate) {
+         query = query.where("as.attendance_date", ">=", startDate);
+      }
+
+      if (endDate) {
+         query = query.where("as.attendance_date", "<=", endDate);
+      }
+
+      // Get combined statistics
+      const combinedStats = await query.clone()
+         .select("ar.status")
+         .count("* as count")
+         .groupBy("ar.status");
+
+      // Get statistics per child
+      const perChildStats = await query.clone()
+         .select("u.id as student_id", "u.name as student_name", "st.nipd", "st.kelas", "ar.status")
+         .count("* as count")
+         .groupBy("u.id", "u.name", "st.nipd", "st.kelas", "ar.status")
+         .orderBy("u.name");
+
+      // Get statistics per subject
+      const perSubjectStats = await query.clone()
+         .select("s.id as subject_id", "s.nama as subject_name", "s.kode as subject_code", "ar.status")
+         .count("* as count")
+         .groupBy("s.id", "s.nama", "s.kode", "ar.status")
+         .orderBy("s.nama");
+
+      // Process combined statistics
+      const combined = combinedStats.reduce((acc: any, stat: any) => {
+         acc[stat.status] = stat.count;
+         acc.total += stat.count;
+         return acc;
+      }, { present: 0, absent: 0, late: 0, excused: 0, total: 0 });
+
+      combined.percentage = combined.total > 0 ? Math.round((combined.present / combined.total) * 100) : 0;
+
+      // Process per-child statistics
+      const perChildMap = new Map();
+      perChildStats.forEach((stat: any) => {
+         const key = stat.student_id;
+         if (!perChildMap.has(key)) {
+            perChildMap.set(key, {
+               student_id: stat.student_id,
+               student_name: stat.student_name,
+               nipd: stat.nipd,
+               kelas: stat.kelas,
+               present: 0,
+               absent: 0,
+               late: 0,
+               excused: 0,
+               total: 0,
+               percentage: 0
+            });
+         }
+         const childStat = perChildMap.get(key);
+         childStat[stat.status] = stat.count;
+         childStat.total += stat.count;
+      });
+
+      // Calculate percentages for each child
+      const perChild = Array.from(perChildMap.values()).map((child: any) => {
+         child.percentage = child.total > 0 ? Math.round((child.present / child.total) * 100) : 0;
+         return child;
+      });
+
+      // Process per-subject statistics
+      const perSubjectMap = new Map();
+      perSubjectStats.forEach((stat: any) => {
+         const key = stat.subject_id;
+         if (!perSubjectMap.has(key)) {
+            perSubjectMap.set(key, {
+               subject_id: stat.subject_id,
+               subject_name: stat.subject_name,
+               subject_code: stat.subject_code,
+               present: 0,
+               absent: 0,
+               late: 0,
+               excused: 0,
+               total: 0,
+               percentage: 0
+            });
+         }
+         const subjectStat = perSubjectMap.get(key);
+         subjectStat[stat.status] = stat.count;
+         subjectStat.total += stat.count;
+      });
+
+      // Calculate percentages for each subject
+      const perSubject = Array.from(perSubjectMap.values()).map((subject: any) => {
+         subject.percentage = subject.total > 0 ? Math.round((subject.present / subject.total) * 100) : 0;
+         return subject;
+      });
+
+      return {
+         combined,
+         per_child: perChild,
+         per_subject: perSubject
+      };
+   }
+
+   /**
+    * Get all subjects for parent's children
+    */
+   async getParentChildrenSubjects(parentId: string): Promise<any[]> {
+      // Validate input
+      if (!parentId) {
+         throw new Error("Parent ID is required");
+      }
+
+      // Get parent's children
+      const children = await this.getParentChildren(parentId);
+
+      if (children.length === 0) {
+         return [];
+      }
+
+      // Extract child user IDs
+      const childUserIds = children.map(child => child.user_id);
+
+      return DB.from("student_classes as sc")
+         .join("subject_classes as sbc", "sc.class_id", "sbc.class_id")
+         .join("subjects as s", "sbc.subject_id", "s.id")
+         .whereIn("sc.student_id", childUserIds)
+         .where("sc.is_active", true)
+         .where("sbc.is_active", true)
+         .where("s.is_active", true)
+         .select(
+            "s.id",
+            "s.nama",
+            "s.kode",
+            "s.deskripsi"
+         )
+         .groupBy("s.id", "s.nama", "s.kode", "s.deskripsi")
+         .orderBy("s.nama");
+   }
+
+   /**
     * Helper method to validate date format (YYYY-MM-DD)
     */
    private isValidDate(dateString: string): boolean {

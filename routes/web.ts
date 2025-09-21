@@ -103,6 +103,13 @@ Route.get("/api/attendance/stats/:student_id", [Auth], AttendanceController.getA
 Route.get("/api/attendance/student/:student_id/history", [Auth], AttendanceController.getStudentAttendanceHistory);
 Route.get("/api/attendance/student/:student_id/stats-by-subject", [Auth], AttendanceController.getStudentAttendanceStatsBySubject);
 Route.get("/api/attendance/student/:student_id/subjects", [Auth], AttendanceController.getStudentSubjects);
+
+// Parent attendance history API routes
+Route.get("/api/attendance/parent/:parent_id/children", [Auth, RoleAuth.require(['parent', 'admin'])], AttendanceController.getParentChildren);
+Route.get("/api/attendance/parent/:parent_id/children/history", [Auth, RoleAuth.require(['parent', 'admin'])], AttendanceController.getParentChildrenAttendanceHistory);
+Route.get("/api/attendance/parent/:parent_id/children/stats", [Auth, RoleAuth.require(['parent', 'admin'])], AttendanceController.getParentChildrenAttendanceStats);
+Route.get("/api/attendance/parent/:parent_id/children/subjects", [Auth, RoleAuth.require(['parent', 'admin'])], AttendanceController.getParentChildrenSubjects);
+
 Route.post("/api/attendance/close/:session_id", [Auth, RoleAuth.teacher()], AttendanceController.closeSession);
 
 // New Attendance Management Routes
