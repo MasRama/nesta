@@ -206,11 +206,21 @@ class TeacherService {
      */
     async getTeacherClassesAndSubjects(userId: string) {
         try {
+            // First get teacher ID from user ID
+            const teacher = await DB.from('teachers')
+                .where('user_id', userId)
+                .where('is_active', true)
+                .first();
+
+            if (!teacher) {
+                return [];
+            }
+
             // Get classes and subjects assigned to this teacher
             const assignments = await DB.from('subject_classes as sc')
                 .join('classes as c', 'sc.class_id', 'c.id')
                 .join('subjects as s', 'sc.subject_id', 's.id')
-                .leftJoin('teachers as t', 't.user_id', 'sc.teacher_id')
+                .leftJoin('teachers as t', 't.id', 'sc.teacher_id')
                 .select(
                     'c.id as class_id',
                     'c.name as class_name',
@@ -230,7 +240,7 @@ class TeacherService {
                     't.nama as teacher_name',
                     't.nip as teacher_nip'
                 )
-                .where('sc.teacher_id', userId)
+                .where('sc.teacher_id', teacher.id) // Use teacher.id instead of userId
                 .where('sc.is_active', true)
                 .where('s.is_active', true)
                 .orderBy('c.grade_level')
@@ -471,11 +481,21 @@ class TeacherService {
      */
     async getTeacherSubjects(teacherUserId: string): Promise<any[]> {
         try {
+            // First get teacher ID from user ID
+            const teacher = await DB.from('teachers')
+                .where('user_id', teacherUserId)
+                .where('is_active', true)
+                .first();
+
+            if (!teacher) {
+                return [];
+            }
+
             // Get subjects with their schedule information from subject_classes
             const subjectsWithSchedule = await DB.from("subject_classes as sc")
                 .join("subjects as s", "sc.subject_id", "s.id")
                 .join("classes as c", "sc.class_id", "c.id")
-                .where("sc.teacher_id", teacherUserId)
+                .where("sc.teacher_id", teacher.id) // Use teacher.id instead of teacherUserId
                 .where("sc.is_active", true)
                 .where("s.is_active", true)
                 .select(

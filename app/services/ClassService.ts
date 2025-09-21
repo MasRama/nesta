@@ -241,7 +241,7 @@ class ClassService {
 
             const assignments = await DB.from('subject_classes as sc')
                 .leftJoin('subjects as s', 'sc.subject_id', 's.id')
-                .leftJoin('teachers as t', 'sc.teacher_id', 't.user_id')
+                .leftJoin('teachers as t', 'sc.teacher_id', 't.id')
                 .where('sc.class_id', classRecord.id)
                 .where('sc.is_active', true)
                 .select(
@@ -358,7 +358,7 @@ class ClassService {
                 id: randomUUID(),
                 subject_id: subjectId,
                 class_id: classRecord.id,
-                teacher_id: teacher.user_id,
+                teacher_id: teacherId, // Use teacherId directly since foreign key now references teachers.id
                 day: day,
                 start_time: startTime,
                 end_time: endTime,

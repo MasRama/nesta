@@ -24,9 +24,19 @@ class AttendanceController {
             return response.status(403).json({ error: "Only teachers can scan student QR codes" });
          }
 
+         // Get teacher ID from user ID
+         const teacher = await DB.from('teachers')
+            .where('user_id', request.user.id)
+            .where('is_active', true)
+            .first();
+
+         if (!teacher) {
+            return response.status(404).json({ error: "Teacher data not found" });
+         }
+
          const result = await AttendanceService.scanStudentQR(
             qr_data,
-            request.user.id,
+            teacher.id, // Use teacher.id instead of request.user.id
             subject_id,
             schedule_id,
             class_id
