@@ -1,7 +1,8 @@
 <script>
    import { router } from '@inertiajs/svelte';
    import { onMount } from 'svelte';
-   
+   import AttendanceHistory from '../../components/AttendanceHistory.svelte';
+
    export let user;
    export let classes = [];
    export let attendance = [];
@@ -345,7 +346,7 @@
                   <span>Ringkasan</span>
                </div>
             </button>
-            <button 
+            <button
                class="px-6 py-3 rounded-xl font-medium text-sm nav-btn-enhanced"
                class:bg-gradient-to-r={currentSection === 'attendance'}
                class:from-green-600={currentSection === 'attendance'}
@@ -362,6 +363,25 @@
                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
                   </svg>
                   <span>Kehadiran</span>
+               </div>
+            </button>
+            <button
+               class="px-6 py-3 rounded-xl font-medium text-sm nav-btn-enhanced"
+               class:bg-gradient-to-r={currentSection === 'attendance-history'}
+               class:from-blue-600={currentSection === 'attendance-history'}
+               class:to-indigo-600={currentSection === 'attendance-history'}
+               class:text-white={currentSection === 'attendance-history'}
+               class:shadow-lg={currentSection === 'attendance-history'}
+               class:bg-gray-100={currentSection !== 'attendance-history'}
+               class:text-gray-700={currentSection !== 'attendance-history'}
+               class:hover:bg-gray-200={currentSection !== 'attendance-history'}
+               on:click={() => navigateToSection('attendance-history')}
+            >
+               <div class="flex items-center space-x-2">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/>
+                  </svg>
+                  <span>Riwayat Kehadiran</span>
                </div>
             </button>
             <button 
@@ -830,6 +850,13 @@
                   </div>
                </div>
             </div>
+         </div>
+      {/if}
+
+      {#if currentSection === 'attendance-history'}
+         <!-- Attendance History Section -->
+         <div class="px-4 py-8 sm:px-0">
+            <AttendanceHistory {user} />
          </div>
       {/if}
    </main>

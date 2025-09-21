@@ -461,6 +461,215 @@ class AttendanceService {
    }
 
    /**
+    * Get comprehensive student attendance history with filters and pagination
+    */
+   async getStudentAttendanceHistory(
+      studentId: string,
+      options: {
+         page?: number;
+         limit?: number;
+         subjectId?: string;
+         startDate?: string;
+         endDate?: string;
+         classId?: string;
+      } = {}
+   ): Promise<{
+      data: any[];
+      pagination: {
+         page: number;
+         limit: number;
+         total: number;
+         totalPages: number;
+      };
+   }> {
+      // Validate input parameters
+      if (!studentId) {
+         throw new Error("Student ID is required");
+      }
+
+      const { page = 1, limit = 20, subjectId, startDate, endDate, classId } = options;
+
+      // Validate pagination parameters
+      const validatedPage = Math.max(1, Math.floor(page));
+      const validatedLimit = Math.min(100, Math.max(1, Math.floor(limit))); // Max 100 records per page
+      const offset = (validatedPage - 1) * validatedLimit;
+
+      // Validate date format if provided
+      if (startDate && !this.isValidDate(startDate)) {
+         throw new Error("Invalid start date format. Use YYYY-MM-DD");
+      }
+
+      if (endDate && !this.isValidDate(endDate)) {
+         throw new Error("Invalid end date format. Use YYYY-MM-DD");
+      }
+
+      // Validate date range
+      if (startDate && endDate && new Date(startDate) > new Date(endDate)) {
+         throw new Error("Start date cannot be after end date");
+      }
+
+      // Build base query
+      let query = DB.from("attendance_records as ar")
+         .join("attendance_sessions as as", "ar.attendance_session_id", "as.id")
+         .join("classes as c", "as.class_id", "c.id")
+         .leftJoin("subjects as s", "as.subject_id", "s.id")
+         .where("ar.student_id", studentId);
+
+      // Apply filters
+      if (subjectId) {
+         query = query.where("as.subject_id", subjectId);
+      }
+
+      if (classId) {
+         query = query.where("as.class_id", classId);
+      }
+
+      if (startDate) {
+         query = query.where("as.attendance_date", ">=", startDate);
+      }
+
+      if (endDate) {
+         query = query.where("as.attendance_date", "<=", endDate);
+      }
+
+      // Get total count for pagination
+      const totalQuery = query.clone().count("* as count").first();
+      const total = await totalQuery;
+
+      // Get paginated data with optimized select
+      const data = await query
+         .select(
+            "ar.id",
+            "ar.status",
+            "ar.scanned_at",
+            "ar.notes",
+            "ar.created_at",
+            "as.attendance_date",
+            "as.starts_at",
+            "as.expires_at",
+            "c.name as class_name",
+            "c.grade_level",
+            "s.nama as subject_name",
+            "s.kode as subject_code"
+         )
+         .orderBy("as.attendance_date", "desc")
+         .orderBy("as.starts_at", "desc")
+         .limit(validatedLimit)
+         .offset(offset);
+
+      return {
+         data,
+         pagination: {
+            page: validatedPage,
+            limit: validatedLimit,
+            total: total?.count || 0,
+            totalPages: Math.ceil((total?.count || 0) / validatedLimit)
+         }
+      };
+   }
+
+   /**
+    * Get student attendance statistics by subject
+    */
+   async getStudentAttendanceStatsBySubject(
+      studentId: string,
+      options: {
+         startDate?: string;
+         endDate?: string;
+         classId?: string;
+      } = {}
+   ): Promise<any[]> {
+      const { startDate, endDate, classId } = options;
+
+      let query = DB.from("attendance_records as ar")
+         .join("attendance_sessions as as", "ar.attendance_session_id", "as.id")
+         .join("subjects as s", "as.subject_id", "s.id")
+         .where("ar.student_id", studentId);
+
+      // Apply filters
+      if (classId) {
+         query = query.where("as.class_id", classId);
+      }
+
+      if (startDate) {
+         query = query.where("as.attendance_date", ">=", startDate);
+      }
+
+      if (endDate) {
+         query = query.where("as.attendance_date", "<=", endDate);
+      }
+
+      const stats = await query
+         .select(
+            "s.id as subject_id",
+            "s.nama as subject_name",
+            "s.kode as subject_code",
+            "ar.status"
+         )
+         .count("* as count")
+         .groupBy("s.id", "s.nama", "s.kode", "ar.status")
+         .orderBy("s.nama");
+
+      // Group by subject and calculate percentages
+      const groupedStats: { [key: string]: any } = {};
+
+      stats.forEach(stat => {
+         const subjectKey = stat.subject_id;
+         if (!groupedStats[subjectKey]) {
+            groupedStats[subjectKey] = {
+               subject_id: stat.subject_id,
+               subject_name: stat.subject_name,
+               subject_code: stat.subject_code,
+               total: 0,
+               present: 0,
+               absent: 0,
+               late: 0,
+               excused: 0,
+               percentage: 0
+            };
+         }
+
+         groupedStats[subjectKey][stat.status] = stat.count;
+         groupedStats[subjectKey].total += stat.count;
+      });
+
+      // Calculate percentages
+      Object.values(groupedStats).forEach((subject: any) => {
+         if (subject.total > 0) {
+            subject.percentage = Math.round((subject.present / subject.total) * 100);
+         }
+      });
+
+      return Object.values(groupedStats);
+   }
+
+   /**
+    * Get student's subjects (mata pelajaran yang diikuti siswa)
+    */
+   async getStudentSubjects(studentId: string): Promise<any[]> {
+      // Validate input
+      if (!studentId) {
+         throw new Error("Student ID is required");
+      }
+
+      return DB.from("student_classes as sc")
+         .join("subject_classes as sbc", "sc.class_id", "sbc.class_id")
+         .join("subjects as s", "sbc.subject_id", "s.id")
+         .where("sc.student_id", studentId)
+         .where("sc.is_active", true)
+         .where("sbc.is_active", true)
+         .where("s.is_active", true)
+         .select(
+            "s.id",
+            "s.nama",
+            "s.kode",
+            "s.deskripsi"
+         )
+         .groupBy("s.id", "s.nama", "s.kode", "s.deskripsi")
+         .orderBy("s.nama");
+   }
+
+   /**
     * Validate teacher schedule with specific schedule ID and class ID
     * Note: Day and time validation removed to allow attendance at any time
     */
@@ -944,6 +1153,25 @@ class AttendanceService {
          console.error("Error exporting attendance data:", error);
          throw error;
       }
+   }
+
+   /**
+    * Helper method to validate date format (YYYY-MM-DD)
+    */
+   private isValidDate(dateString: string): boolean {
+      const regex = /^\d{4}-\d{2}-\d{2}$/;
+      if (!regex.test(dateString)) {
+         return false;
+      }
+
+      const date = new Date(dateString);
+      const timestamp = date.getTime();
+
+      if (typeof timestamp !== 'number' || Number.isNaN(timestamp)) {
+         return false;
+      }
+
+      return dateString === date.toISOString().split('T')[0];
    }
 }
 

@@ -100,6 +100,9 @@ Route.post("/api/attendance/scan", [Auth, RoleAuth.student()], AttendanceControl
 Route.get("/api/attendance/class/:class_id", [Auth, RoleAuth.teacherOrAdmin()], AttendanceController.getClassAttendance);
 Route.get("/api/attendance/student/:student_id", [Auth], AttendanceController.getStudentAttendance);
 Route.get("/api/attendance/stats/:student_id", [Auth], AttendanceController.getAttendanceStats);
+Route.get("/api/attendance/student/:student_id/history", [Auth], AttendanceController.getStudentAttendanceHistory);
+Route.get("/api/attendance/student/:student_id/stats-by-subject", [Auth], AttendanceController.getStudentAttendanceStatsBySubject);
+Route.get("/api/attendance/student/:student_id/subjects", [Auth], AttendanceController.getStudentSubjects);
 Route.post("/api/attendance/close/:session_id", [Auth, RoleAuth.teacher()], AttendanceController.closeSession);
 
 // New Attendance Management Routes

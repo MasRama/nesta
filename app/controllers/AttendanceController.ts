@@ -210,6 +210,109 @@ class AttendanceController {
    }
 
    /**
+    * Get comprehensive student attendance history with filters and pagination
+    */
+   public async getStudentAttendanceHistory(request: Request, response: Response) {
+      try {
+         const { student_id } = request.params;
+         const {
+            page = 1,
+            limit = 20,
+            subject_id,
+            start_date,
+            end_date,
+            class_id
+         } = request.query;
+
+         // Validate student_id parameter
+         if (!student_id) {
+            return response.status(400).json({ error: "Student ID is required" });
+         }
+
+         // Check permissions - student can only access their own data
+         const canAccess = await RoleAuth.canAccessStudent(request, student_id);
+         if (!canAccess) {
+            return response.status(403).json({ error: "Unauthorized access to student data" });
+         }
+
+         // Validate pagination parameters
+         const pageNum = parseInt(page as string);
+         const limitNum = parseInt(limit as string);
+
+         if (isNaN(pageNum) || pageNum < 1) {
+            return response.status(400).json({ error: "Invalid page number" });
+         }
+
+         if (isNaN(limitNum) || limitNum < 1 || limitNum > 100) {
+            return response.status(400).json({ error: "Invalid limit. Must be between 1 and 100" });
+         }
+
+         const result = await AttendanceService.getStudentAttendanceHistory(student_id, {
+            page: parseInt(page as string),
+            limit: parseInt(limit as string),
+            subjectId: subject_id as string,
+            startDate: start_date as string,
+            endDate: end_date as string,
+            classId: class_id as string
+         });
+
+         return response.json(result);
+      } catch (error) {
+         console.error("Error getting student attendance history:", error);
+         return response.status(500).json({ error: "Failed to get attendance history" });
+      }
+   }
+
+   /**
+    * Get student attendance statistics by subject
+    */
+   public async getStudentAttendanceStatsBySubject(request: Request, response: Response) {
+      try {
+         const { student_id } = request.params;
+         const { start_date, end_date, class_id } = request.query;
+
+         // Check permissions
+         const canAccess = await RoleAuth.canAccessStudent(request, student_id);
+         if (!canAccess) {
+            return response.status(403).json({ error: "Unauthorized access to student data" });
+         }
+
+         const stats = await AttendanceService.getStudentAttendanceStatsBySubject(student_id, {
+            startDate: start_date as string,
+            endDate: end_date as string,
+            classId: class_id as string
+         });
+
+         return response.json({ stats });
+      } catch (error) {
+         console.error("Error getting student attendance stats by subject:", error);
+         return response.status(500).json({ error: "Failed to get attendance statistics by subject" });
+      }
+   }
+
+   /**
+    * Get student's subjects
+    */
+   public async getStudentSubjects(request: Request, response: Response) {
+      try {
+         const { student_id } = request.params;
+
+         // Check permissions
+         const canAccess = await RoleAuth.canAccessStudent(request, student_id);
+         if (!canAccess) {
+            return response.status(403).json({ error: "Unauthorized access to student data" });
+         }
+
+         const subjects = await AttendanceService.getStudentSubjects(student_id);
+
+         return response.json({ subjects });
+      } catch (error) {
+         console.error("Error getting student subjects:", error);
+         return response.status(500).json({ error: "Failed to get student subjects" });
+      }
+   }
+
+   /**
     * Get teacher's schedules for today (Teacher only)
     */
    public async getTodaySchedules(request: Request, response: Response) {
