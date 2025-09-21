@@ -251,6 +251,16 @@ class SchoolAuthController {
    }
 
    private async getTeacherDashboard(user: any, response: Response) {
+      // Get teacher record first
+      const teacher = await DB.from('teachers')
+         .where('user_id', user.id)
+         .where('is_active', true)
+         .first();
+
+      if (!teacher) {
+         return response.status(404).json({ error: 'Teacher record not found' });
+      }
+
       // Get teacher subjects for attendance
       const teacherSubjects = await TeacherService.getTeacherSubjects(user.id);
 
@@ -260,15 +270,15 @@ class SchoolAuthController {
       // Get current active schedule (for overview card)
       const currentSchedule = await TeacherService.getCurrentActiveSchedule(user.id);
 
-      // Get recent journals
+      // Get recent journals (use teacher.id, not user.id)
       const journals = await DB.from("teacher_journals")
-         .where("teacher_id", user.id)
+         .where("teacher_id", teacher.id)
          .orderBy("created_at", "desc")
          .limit(5);
 
-      // Get active exams
+      // Get active exams (use teacher.id, not user.id)
       const exams = await DB.from("exams")
-         .where("teacher_id", user.id)
+         .where("teacher_id", teacher.id)
          .where("status", "active")
          .orderBy("start_time", "asc");
 

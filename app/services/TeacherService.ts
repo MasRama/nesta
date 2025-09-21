@@ -425,6 +425,19 @@ class TeacherService {
         message: string
     }> {
         try {
+            // First get teacher ID from user ID
+            const teacher = await DB.from('teachers')
+                .where('user_id', teacherUserId)
+                .where('is_active', true)
+                .first();
+
+            if (!teacher) {
+                return {
+                    hasActiveSchedule: false,
+                    message: "Data guru tidak ditemukan"
+                };
+            }
+
             const now = new Date();
             const dayNames = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
             const currentDay = dayNames[now.getDay()];
@@ -434,7 +447,7 @@ class TeacherService {
             const schedule = await DB.from("subject_classes as sc")
                 .join("subjects as s", "sc.subject_id", "s.id")
                 .join("classes as c", "sc.class_id", "c.id")
-                .where("sc.teacher_id", teacherUserId)
+                .where("sc.teacher_id", teacher.id) // Use teacher.id instead of teacherUserId
                 .where("sc.day", currentDay)
                 .where("sc.start_time", "<=", currentTime)
                 .where("sc.end_time", ">=", currentTime)
@@ -551,10 +564,20 @@ class TeacherService {
      */
     async getTeacherWeeklySchedule(teacherUserId: string): Promise<any[]> {
         try {
+            // First get teacher ID from user ID
+            const teacher = await DB.from('teachers')
+                .where('user_id', teacherUserId)
+                .where('is_active', true)
+                .first();
+
+            if (!teacher) {
+                return [];
+            }
+
             const schedule = await DB.from("subject_classes as sc")
                 .join("subjects as s", "sc.subject_id", "s.id")
                 .join("classes as c", "sc.class_id", "c.id")
-                .where("sc.teacher_id", teacherUserId)
+                .where("sc.teacher_id", teacher.id) // Use teacher.id instead of teacherUserId
                 .where("sc.is_active", true)
                 .where("s.is_active", true)
                 .select(
@@ -602,6 +625,20 @@ class TeacherService {
         message: string;
     }> {
         try {
+            // First get teacher ID from user ID
+            const teacher = await DB.from('teachers')
+                .where('user_id', teacherUserId)
+                .where('is_active', true)
+                .first();
+
+            if (!teacher) {
+                return {
+                    hasSchedules: false,
+                    schedules: [],
+                    message: "Data guru tidak ditemukan"
+                };
+            }
+
             const now = new Date();
             const dayNames = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
             const currentDay = dayNames[now.getDay()];
@@ -610,7 +647,7 @@ class TeacherService {
             const schedules = await DB.from("subject_classes as sc")
                 .join("subjects as s", "sc.subject_id", "s.id")
                 .join("classes as c", "sc.class_id", "c.id")
-                .where("sc.teacher_id", teacherUserId)
+                .where("sc.teacher_id", teacher.id) // Use teacher.id instead of teacherUserId
                 .where("sc.day", currentDay)
                 .where("sc.is_active", true)
                 .where("s.is_active", true)

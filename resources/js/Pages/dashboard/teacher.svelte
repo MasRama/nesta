@@ -57,6 +57,39 @@
       await checkTodaySchedulesForSelector();
    }
 
+   async function loadTodaySchedules() {
+      isLoadingSchedules = true;
+      scanError = null;
+
+      try {
+         const response = await fetch('/api/attendance/today-schedules', {
+            method: 'GET',
+            headers: {
+               'Content-Type': 'application/json',
+            }
+         });
+
+         const data = await response.json();
+
+         if (response.ok) {
+            if (!data.hasSchedules) {
+               todaySchedules = [];
+            } else {
+               todaySchedules = data.schedules;
+            }
+         } else {
+            scanError = data.error || 'Gagal mengambil jadwal hari ini';
+            todaySchedules = [];
+         }
+      } catch (error) {
+         console.error('Error fetching today schedules:', error);
+         scanError = 'Terjadi kesalahan saat mengambil jadwal';
+         todaySchedules = [];
+      } finally {
+         isLoadingSchedules = false;
+      }
+   }
+
    async function checkTodaySchedulesForSelector() {
       isLoadingSchedules = true;
       scanError = null;
@@ -820,6 +853,71 @@
       {#if currentSection === 'attendance'}
          <!-- Attendance Section -->
          <div class="px-4 py-6 sm:px-0">
+            <!-- Jadwal Hari Ini Section -->
+            <div class="mb-8">
+               <div class="bg-gradient-to-br from-white/90 to-blue-50/30 backdrop-blur-sm border border-blue-100/50 rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all duration-300">
+                  <div class="flex items-center justify-between mb-6">
+                     <div class="flex items-center space-x-3">
+                        <div class="w-10 h-10 bg-gradient-to-br from-emerald-500 to-green-600 rounded-xl flex items-center justify-center shadow-md">
+                           <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                           </svg>
+                        </div>
+                        <h4 class="text-xl font-bold text-gray-900">Jadwal Hari Ini</h4>
+                     </div>
+                     <button
+                        class="bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-600 hover:to-green-700 text-white px-4 py-2 rounded-xl text-sm font-semibold shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 transition-all duration-300 flex items-center space-x-2"
+                        on:click={loadTodaySchedules}
+                     >
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 16h4.01M12 8h4.01M16 4h4.01"/>
+                        </svg>
+                        <span>Mulai Absensi</span>
+                     </button>
+                  </div>
+
+                  {#if isLoadingSchedules}
+                     <div class="flex items-center justify-center py-8">
+                        <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-500"></div>
+                        <span class="ml-3 text-gray-600">Memuat jadwal...</span>
+                     </div>
+                  {:else if todaySchedules.length > 0}
+                     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {#each todaySchedules as schedule}
+                           <div class="bg-white/70 rounded-xl p-4 border border-white/50 hover:bg-white/90 transition-all duration-200 hover:shadow-md">
+                              <div class="flex items-center justify-between mb-3">
+                                 <span class="text-sm font-semibold text-emerald-600 bg-emerald-50 px-2 py-1 rounded-lg">{schedule.subject_code}</span>
+                                 <span class="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded-lg">{schedule.start_time} - {schedule.end_time}</span>
+                              </div>
+                              <h5 class="font-medium text-gray-900 mb-1">{schedule.subject_name}</h5>
+                              <p class="text-sm text-gray-600 mb-3">Kelas {schedule.class_name}</p>
+                              <button
+                                 class="w-full bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-600 hover:to-green-700 text-white py-2 px-3 rounded-lg text-sm font-semibold shadow-sm hover:shadow-md transform hover:-translate-y-0.5 transition-all duration-200 flex items-center justify-center space-x-2"
+                                 on:click={() => selectSchedule(schedule)}
+                              >
+                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 16h4.01M12 8h4.01M16 4h4.01"/>
+                                 </svg>
+                                 <span>Scan QR</span>
+                              </button>
+                           </div>
+                        {/each}
+                     </div>
+                  {:else}
+                     <div class="text-center py-8">
+                        <div class="w-16 h-16 mx-auto mb-4 bg-gray-100 rounded-full flex items-center justify-center">
+                           <svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                           </svg>
+                        </div>
+                        <p class="text-gray-500 text-sm">Tidak ada jadwal mengajar hari ini</p>
+                        <p class="text-gray-400 text-xs mt-1">Klik "Mulai Absensi" untuk memuat jadwal terbaru</p>
+                     </div>
+                  {/if}
+               </div>
+            </div>
+
+            <!-- Semua Mata Pelajaran Section -->
             <div class="group bg-white/80 backdrop-blur-xl shadow-2xl rounded-3xl border border-white/20 hover:shadow-3xl transition-all duration-500 fade-in-up">
                <div class="px-8 py-8">
                   <div class="flex items-center space-x-3 mb-8">
@@ -828,10 +926,10 @@
                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
                         </svg>
                      </div>
-                     <h3 class="text-2xl font-bold bg-gradient-to-r from-gray-900 to-gray-600 bg-clip-text text-transparent">Manajemen Absensi</h3>
+                     <h3 class="text-2xl font-bold bg-gradient-to-r from-gray-900 to-gray-600 bg-clip-text text-transparent">Semua Mata Pelajaran</h3>
                   </div>
-                  
-                  <div class="max-w-4xl mx-auto">
+
+                  <div class="max-w-6xl mx-auto">
                      {#if teacherSubjects.length > 0}
                         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                            {#each teacherSubjects as subject}
@@ -851,25 +949,29 @@
                                     <h4 class="text-lg font-bold text-gray-900 mb-3 group-hover:text-blue-700 transition-colors">{subject.nama}</h4>
 
                                     <!-- Jadwal Information -->
-                                    {#if subject.schedules && subject.schedules.length > 0}
-                                       <div class="mb-4 space-y-1">
+                                    <div class="mb-4 space-y-2">
+                                       {#if subject.schedules && subject.schedules.length > 0}
                                           {#each subject.schedules as schedule}
-                                             <div class="text-sm text-gray-700">
-                                                <span class="font-medium text-gray-800">Jadwal:</span>
-                                                <span class="text-blue-600 font-medium">{schedule.day}, {schedule.start_time} - {schedule.end_time}</span>
+                                             <div class="bg-blue-50 rounded-lg p-3 border border-blue-100">
+                                                <div class="text-sm text-gray-700">
+                                                   <span class="font-medium text-gray-800">Jadwal:</span>
+                                                   <span class="text-blue-600 font-medium">{schedule.day}, {schedule.start_time} - {schedule.end_time}</span>
+                                                </div>
                                                 {#if schedule.kelas}
-                                                   <span class="text-gray-600">({schedule.kelas})</span>
+                                                   <div class="text-xs text-gray-600 mt-1">
+                                                      <span class="font-medium">Kelas:</span> {schedule.kelas}
+                                                   </div>
                                                 {/if}
                                              </div>
                                           {/each}
-                                       </div>
-                                    {:else}
-                                       <div class="mb-4">
-                                          <div class="text-sm text-gray-600">
-                                             <span class="font-medium">Jadwal:</span> Belum ada jadwal terdaftar
+                                       {:else}
+                                          <div class="bg-gray-50 rounded-lg p-3 border border-gray-200">
+                                             <div class="text-sm text-gray-600">
+                                                <span class="font-medium">Jadwal:</span> Belum ada jadwal terdaftar
+                                             </div>
                                           </div>
-                                       </div>
-                                    {/if}
+                                       {/if}
+                                    </div>
 
                                     <p class="text-sm text-gray-600 mb-6">{subject.deskripsi || 'Mata pelajaran yang Anda ampu'}</p>
                                     <button
@@ -877,7 +979,7 @@
                                        on:click={() => openQRScanner(subject)}
                                     >
                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 16h4.01M12 8h4.01M16 4h4.01"></path>
+                                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 16h4.01M12 8h4.01M16 4h4.01"/>
                                        </svg>
                                        <span>Scan QR Murid</span>
                                     </button>
