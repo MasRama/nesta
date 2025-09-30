@@ -221,6 +221,30 @@ class SubjectController {
             return response.status(500).json({ error: 'Gagal mengambil data mata pelajaran' });
         }
     }
+    
+    /**
+     * Get subject detail API (for modal view)
+     */
+    public async getSubjectDetailAPI(request: Request, response: Response) {
+        try {
+            const { id } = request.params;
+            const subject = await SubjectService.getSubjectById(id);
+            
+            if (!subject) {
+                return response.status(404).json({ error: 'Mata pelajaran tidak ditemukan' });
+            }
+            
+            return response.json({ 
+                success: true,
+                data: { 
+                    subject
+                } 
+            });
+        } catch (error) {
+            console.error('Error fetching subject detail:', error);
+            return response.status(500).json({ error: 'Gagal mengambil detail mata pelajaran' });
+        }
+    }
 }
 
 export default new SubjectController();

@@ -15,6 +15,9 @@
 
    let searchQuery = filters.search || '';
    let currentSection = 'subjects';
+   let isModalOpen = false;
+   let selectedSubject = null;
+   let isLoadingDetail = false;
 
 
 
@@ -43,8 +46,26 @@
       router.visit(`/admin/subjects/${id}/edit`);
    }
    
-   function viewSubject(id) {
-      router.visit(`/admin/subjects/${id}`);
+   async function viewSubject(id) {
+      try {
+         isLoadingDetail = true;
+         isModalOpen = true;
+         selectedSubject = null;
+         
+         const response = await subjectAPI.getDetail(id);
+         selectedSubject = response.data.data;
+      } catch (error) {
+         console.error('Error fetching subject detail:', error);
+         handleAPIError(error, 'Gagal mengambil detail mata pelajaran');
+         isModalOpen = false;
+      } finally {
+         isLoadingDetail = false;
+      }
+   }
+   
+   function closeModal() {
+      isModalOpen = false;
+      selectedSubject = null;
    }
    
 
@@ -325,6 +346,95 @@
       </div>
    </main>
 </div>
+
+<!-- Modal Detail Mata Pelajaran -->
+{#if isModalOpen}
+   <div class="fixed inset-0 z-50 overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+      <!-- Background overlay -->
+      <div class="fixed inset-0 bg-gray-900 bg-opacity-75 transition-opacity" on:click={closeModal}></div>
+      
+      <!-- Modal panel -->
+      <div class="flex min-h-full items-center justify-center p-4">
+         <div class="relative transform overflow-hidden rounded-2xl bg-white shadow-2xl transition-all w-full max-w-2xl">
+            <!-- Modal Header -->
+            <div class="bg-gradient-to-r from-green-600 to-emerald-600 px-6 py-4">
+               <div class="flex items-center justify-between">
+                  <h3 class="text-xl font-semibold text-white flex items-center space-x-2">
+                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/>
+                     </svg>
+                     <span>Detail Mata Pelajaran</span>
+                  </h3>
+                  <button
+                     on:click={closeModal}
+                     class="text-white hover:text-gray-200 transition-colors"
+                  >
+                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                     </svg>
+                  </button>
+               </div>
+            </div>
+            
+            <!-- Modal Body -->
+            <div class="px-6 py-6">
+               {#if isLoadingDetail}
+                  <div class="flex items-center justify-center py-12">
+                     <div class="flex flex-col items-center space-y-3">
+                        <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600"></div>
+                        <p class="text-gray-600">Memuat data...</p>
+                     </div>
+                  </div>
+               {:else if selectedSubject}
+                  <!-- Subject Info -->
+                  <div class="bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl p-6 border border-green-200">
+                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                           <label class="text-sm font-medium text-gray-600">Kode Mata Pelajaran</label>
+                           <p class="text-lg font-semibold text-gray-900 mt-1">{selectedSubject.subject.kode}</p>
+                        </div>
+                        <div>
+                           <label class="text-sm font-medium text-gray-600">Status</label>
+                           <p class="mt-1">
+                              <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium {selectedSubject.subject.is_active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}">
+                                 {selectedSubject.subject.is_active ? 'Aktif' : 'Tidak Aktif'}
+                              </span>
+                           </p>
+                        </div>
+                        <div class="md:col-span-2">
+                           <label class="text-sm font-medium text-gray-600">Nama Mata Pelajaran</label>
+                           <p class="text-lg font-semibold text-gray-900 mt-1">{selectedSubject.subject.nama}</p>
+                        </div>
+                        <div class="md:col-span-2">
+                           <label class="text-sm font-medium text-gray-600">Deskripsi</label>
+                           <p class="text-gray-700 mt-1">{selectedSubject.subject.deskripsi || '-'}</p>
+                        </div>
+                     </div>
+                  </div>
+               {/if}
+            </div>
+            
+            <!-- Modal Footer -->
+            <div class="bg-gray-50 px-6 py-4 flex justify-end space-x-3">
+               <button
+                  on:click={closeModal}
+                  class="px-6 py-2.5 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-medium"
+               >
+                  Tutup
+               </button>
+               {#if selectedSubject}
+                  <button
+                     on:click={() => { closeModal(); editSubject(selectedSubject.subject.id); }}
+                     class="px-6 py-2.5 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-lg hover:from-green-700 hover:to-emerald-700 transition-all duration-200 font-medium"
+                  >
+                     Edit Mata Pelajaran
+                  </button>
+               {/if}
+            </div>
+         </div>
+      </div>
+   </div>
+{/if}
 
 
 

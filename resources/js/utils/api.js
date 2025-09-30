@@ -134,6 +134,11 @@ export const subjectAPI = {
     getById: (id) => {
         return api.get(`/admin/subjects/${id}/edit`);
     },
+    
+    // Get subject detail (for modal view)
+    getDetail: (id) => {
+        return api.get(`/api/subjects/${id}`);
+    },
 
     // Create new subject
     create: (data) => {

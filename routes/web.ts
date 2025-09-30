@@ -318,8 +318,10 @@ Route.delete("/admin/subjects/:id", [Auth, RoleAuth.admin()], SubjectController.
  * API endpoints for subject data
  * ------------------------------------------------
  * GET   /api/subjects - Get subjects list (JSON)
+ * GET   /api/subjects/:id - Get subject detail (JSON)
  */
 Route.get("/api/subjects", [Auth, RoleAuth.admin()], SubjectController.getSubjectsAPI);
+Route.get("/api/subjects/:id", [Auth, RoleAuth.admin()], SubjectController.getSubjectDetailAPI);
 
 /**
  * Class Management Routes (Admin Only)
