@@ -175,6 +175,25 @@ class SubjectController {
             return response.status(500).json({ error: 'Gagal mengambil data mata pelajaran' });
         }
     }
+    async getSubjectDetailAPI(request, response) {
+        try {
+            const { id } = request.params;
+            const subject = await SubjectService_1.default.getSubjectById(id);
+            if (!subject) {
+                return response.status(404).json({ error: 'Mata pelajaran tidak ditemukan' });
+            }
+            return response.json({
+                success: true,
+                data: {
+                    subject
+                }
+            });
+        }
+        catch (error) {
+            console.error('Error fetching subject detail:', error);
+            return response.status(500).json({ error: 'Gagal mengambil detail mata pelajaran' });
+        }
+    }
 }
 exports.default = new SubjectController();
 //# sourceMappingURL=SubjectController.js.map

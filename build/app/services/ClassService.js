@@ -189,14 +189,6 @@ class ClassService {
             if (!teacher) {
                 throw new Error('Guru tidak ditemukan');
             }
-            const teacherSubjectAssignment = await DB_1.default.from('teacher_subjects')
-                .where('teacher_id', teacherId)
-                .where('subject_id', subjectId)
-                .where('is_active', true)
-                .first();
-            if (!teacherSubjectAssignment) {
-                throw new Error('Guru belum di-assign ke mata pelajaran ini. Silakan assign guru ke mata pelajaran terlebih dahulu di menu Mata Pelajaran.');
-            }
             if (!day || !startTime || !endTime) {
                 throw new Error('Hari, waktu mulai, dan waktu selesai wajib diisi');
             }

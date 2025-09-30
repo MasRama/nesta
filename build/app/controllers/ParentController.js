@@ -4,7 +4,6 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const ParentService_1 = __importDefault(require("../services/ParentService"));
-const StudentService_1 = __importDefault(require("../services/StudentService"));
 class ParentController {
     async index(request, response) {
         try {
@@ -62,15 +61,7 @@ class ParentController {
             }
             console.log(`[${requestId}] Calling ParentService.createParent`);
             const parent = await ParentService_1.default.createParent(data);
-            console.log(`[${requestId}] Parent created successfully`);
-            if (data.students && Array.isArray(data.students)) {
-                for (const studentData of data.students) {
-                    const student = await StudentService_1.default.getStudentByNIPD(studentData.nipd);
-                    if (student) {
-                        await ParentService_1.default.addStudentToParent(parent.id, student.id, studentData.relationship_type || 'wali', studentData.is_primary_contact || false);
-                    }
-                }
-            }
+            console.log(`[${requestId}] Parent created successfully with ID: ${parent.id}`);
             return response.status(201).json({
                 success: true,
                 message: 'Wali murid berhasil ditambahkan',

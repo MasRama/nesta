@@ -10,7 +10,7 @@ const customParseFormat_1 = __importDefault(require("dayjs/plugin/customParseFor
 const ClassService_1 = __importDefault(require("./ClassService"));
 dayjs_1.default.extend(customParseFormat_1.default);
 class StudentService {
-    async getStudents(page = 1, limit = 10, search, kelas) {
+    async getStudents(page = 1, limit = 10, search, kelas, gender) {
         let query = DB_1.default.from('students').select('*');
         if (search) {
             query = query.where(function () {
@@ -21,6 +21,9 @@ class StudentService {
         }
         if (kelas) {
             query = query.where('kelas', kelas);
+        }
+        if (gender) {
+            query = query.where('jenis_kelamin', gender);
         }
         const countQuery = query.clone();
         const totalResult = await countQuery.count('* as count').first();
@@ -80,6 +83,16 @@ class StudentService {
             is_active: false,
             updated_at: (0, dayjs_1.default)().valueOf()
         });
+    }
+    async bulkDeleteStudents(ids) {
+        if (!ids || ids.length === 0) {
+            return 0;
+        }
+        await DB_1.default.table('students').whereIn('id', ids).update({
+            is_active: false,
+            updated_at: (0, dayjs_1.default)().valueOf()
+        });
+        return ids.length;
     }
     async getClasses() {
         const classes = await DB_1.default.from('students')
@@ -281,6 +294,9 @@ class StudentService {
         }
         if (filters?.kelas) {
             query = query.where('kelas', filters.kelas);
+        }
+        if (filters?.gender) {
+            query = query.where('jenis_kelamin', filters.gender);
         }
         const students = await query.orderBy('kelas').orderBy('nama');
         const header = 'NIPD;NAMA;KELAS;TEMPAT LAHIR;TGL LAHIR;Jenis Kelamin;Agama;;;;;;;;;;;;;;;;;;;;';

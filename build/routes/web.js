@@ -89,6 +89,7 @@ Route.get("/admin/students/:id", [auth_1.default, roleAuth_1.default.admin()], S
 Route.get("/admin/students/:id/edit", [auth_1.default, roleAuth_1.default.admin()], StudentController_1.default.edit);
 Route.put("/admin/students/:id", [auth_1.default, roleAuth_1.default.admin()], StudentController_1.default.update);
 Route.delete("/admin/students/:id", [auth_1.default, roleAuth_1.default.admin()], StudentController_1.default.destroy);
+Route.post("/admin/students/bulk-delete", [auth_1.default, roleAuth_1.default.admin()], StudentController_1.default.bulkDelete);
 Route.post("/admin/students/import-csv", [auth_1.default, roleAuth_1.default.admin()], StudentController_1.default.importCSV);
 Route.get("/admin/students/export-csv", [auth_1.default, roleAuth_1.default.admin()], StudentController_1.default.exportCSV);
 Route.get("/admin/students/template-csv", [auth_1.default, roleAuth_1.default.admin()], StudentController_1.default.downloadTemplate);
@@ -121,6 +122,7 @@ Route.get("/admin/subjects/:id/edit", [auth_1.default, roleAuth_1.default.admin(
 Route.put("/admin/subjects/:id", [auth_1.default, roleAuth_1.default.admin()], SubjectController_1.default.update);
 Route.delete("/admin/subjects/:id", [auth_1.default, roleAuth_1.default.admin()], SubjectController_1.default.destroy);
 Route.get("/api/subjects", [auth_1.default, roleAuth_1.default.admin()], SubjectController_1.default.getSubjectsAPI);
+Route.get("/api/subjects/:id", [auth_1.default, roleAuth_1.default.admin()], SubjectController_1.default.getSubjectDetailAPI);
 Route.get("/admin/classes", [auth_1.default, roleAuth_1.default.admin()], ClassController_1.default.index);
 Route.get("/admin/classes/:className", [auth_1.default, roleAuth_1.default.admin()], ClassController_1.default.show);
 Route.post("/admin/classes/:className/assign-teacher", [auth_1.default, roleAuth_1.default.admin()], ClassController_1.default.assignTeacher);

@@ -9,7 +9,7 @@ const dayjs_1 = __importDefault(require("dayjs"));
 const Authenticate_1 = __importDefault(require("./Authenticate"));
 class ParentService {
     async getParents(page = 1, limit = 10, search) {
-        let query = DB_1.default.from('parents').select('*').where('is_active', true);
+        let query = DB_1.default.from('parents').select('*');
         if (search) {
             query = query.where(function () {
                 this.where('nama', 'like', `%${search}%`)
@@ -42,7 +42,10 @@ class ParentService {
         return await DB_1.default.from('parents').where('id', id).first();
     }
     async getParentByEmail(email) {
-        return await DB_1.default.from('parents').where('email', email).first();
+        return await DB_1.default.from('parents')
+            .where('email', email)
+            .where('is_active', true)
+            .first();
     }
     async createParent(data) {
         const parentId = (0, crypto_1.randomUUID)();
@@ -104,9 +107,17 @@ class ParentService {
         return await this.getParentById(id);
     }
     async deleteParent(id) {
-        await DB_1.default.from('parents').where('id', id).update({
-            is_active: false,
-            updated_at: (0, dayjs_1.default)().valueOf()
+        const parent = await this.getParentById(id);
+        if (!parent) {
+            throw new Error('Parent tidak ditemukan');
+        }
+        await DB_1.default.transaction(async (trx) => {
+            await trx.from('parent_students').where('parent_id', id).delete();
+            await trx.from('parents').where('id', id).delete();
+            await trx.from('users')
+                .where('email', parent.email)
+                .where('role', 'parent')
+                .delete();
         });
     }
     async getParentStudents(parentId) {
@@ -123,6 +134,14 @@ class ParentService {
             .first();
     }
     async addStudentToParent(parentId, studentId, relationshipType, isPrimaryContact = false) {
+        const existing = await DB_1.default.from('parent_students')
+            .where('parent_id', parentId)
+            .where('student_id', studentId)
+            .where('relationship_type', relationshipType)
+            .first();
+        if (existing) {
+            throw new Error(`Siswa sudah ditambahkan dengan hubungan ${relationshipType}`);
+        }
         const relationData = {
             id: (0, crypto_1.randomUUID)(),
             parent_id: parentId,

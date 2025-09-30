@@ -11,12 +11,13 @@ class StudentController {
             const limit = parseInt(request.query.limit) || 10;
             const search = request.query.search;
             const kelas = request.query.kelas;
-            const result = await StudentService_1.default.getStudents(page, limit, search, kelas);
+            const gender = request.query.gender;
+            const result = await StudentService_1.default.getStudents(page, limit, search, kelas, gender);
             const classes = await StudentService_1.default.getClasses();
             return response.inertia("admin/students/index", {
                 ...result,
                 classes,
-                filters: { search, kelas }
+                filters: { search, kelas, gender }
             });
         }
         catch (error) {
@@ -145,7 +146,8 @@ class StudentController {
             const limit = parseInt(request.query.limit) || 10;
             const search = request.query.search;
             const kelas = request.query.kelas;
-            const result = await StudentService_1.default.getStudents(page, limit, search, kelas);
+            const gender = request.query.gender;
+            const result = await StudentService_1.default.getStudents(page, limit, search, kelas, gender);
             return response.json(result);
         }
         catch (error) {
@@ -181,7 +183,8 @@ class StudentController {
         try {
             const search = request.query.search;
             const kelas = request.query.kelas;
-            const csvContent = await StudentService_1.default.exportToCSV({ search, kelas });
+            const gender = request.query.gender;
+            const csvContent = await StudentService_1.default.exportToCSV({ search, kelas, gender });
             response.setHeader('Content-Type', 'text/csv; charset=utf-8');
             response.setHeader('Content-Disposition', 'attachment; filename="data_siswa.csv"');
             return response.send(csvContent);
@@ -201,6 +204,23 @@ class StudentController {
         catch (error) {
             console.error('Error downloading template:', error);
             return response.status(500).json({ error: 'Gagal mendownload template' });
+        }
+    }
+    async bulkDelete(request, response) {
+        try {
+            const { ids } = await request.json();
+            if (!ids || !Array.isArray(ids) || ids.length === 0) {
+                return response.status(400).json({ error: 'ID siswa tidak valid' });
+            }
+            const deletedCount = await StudentService_1.default.bulkDeleteStudents(ids);
+            return response.json({
+                message: `${deletedCount} siswa berhasil dihapus`,
+                count: deletedCount
+            });
+        }
+        catch (error) {
+            console.error('Error bulk deleting students:', error);
+            return response.status(500).json({ error: 'Gagal menghapus siswa' });
         }
     }
 }
