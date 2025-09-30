@@ -11,14 +11,15 @@ class StudentController {
             const limit = parseInt(request.query.limit as string) || 10;
             const search = request.query.search as string;
             const kelas = request.query.kelas as string;
+            const gender = request.query.gender as string;
             
-            const result = await StudentService.getStudents(page, limit, search, kelas);
+            const result = await StudentService.getStudents(page, limit, search, kelas, gender);
             const classes = await StudentService.getClasses();
             
             return response.inertia("admin/students/index", {
                 ...result,
                 classes,
-                filters: { search, kelas }
+                filters: { search, kelas, gender }
             });
         } catch (error) {
             console.error('Error fetching students:', error);
@@ -186,8 +187,9 @@ class StudentController {
             const limit = parseInt(request.query.limit as string) || 10;
             const search = request.query.search as string;
             const kelas = request.query.kelas as string;
+            const gender = request.query.gender as string;
 
-            const result = await StudentService.getStudents(page, limit, search, kelas);
+            const result = await StudentService.getStudents(page, limit, search, kelas, gender);
             return response.json(result);
         } catch (error) {
             console.error('Error fetching students API:', error);
@@ -234,8 +236,9 @@ class StudentController {
         try {
             const search = request.query.search as string;
             const kelas = request.query.kelas as string;
+            const gender = request.query.gender as string;
 
-            const csvContent = await StudentService.exportToCSV({ search, kelas });
+            const csvContent = await StudentService.exportToCSV({ search, kelas, gender });
 
             response.setHeader('Content-Type', 'text/csv; charset=utf-8');
             response.setHeader('Content-Disposition', 'attachment; filename="data_siswa.csv"');
@@ -261,6 +264,28 @@ class StudentController {
         } catch (error) {
             console.error('Error downloading template:', error);
             return response.status(500).json({ error: 'Gagal mendownload template' });
+        }
+    }
+    
+    /**
+     * Bulk delete students
+     */
+    public async bulkDelete(request: Request, response: Response) {
+        try {
+            const { ids } = await request.json();
+            
+            if (!ids || !Array.isArray(ids) || ids.length === 0) {
+                return response.status(400).json({ error: 'ID siswa tidak valid' });
+            }
+            
+            const deletedCount = await StudentService.bulkDeleteStudents(ids);
+            return response.json({ 
+                message: `${deletedCount} siswa berhasil dihapus`,
+                count: deletedCount
+            });
+        } catch (error) {
+            console.error('Error bulk deleting students:', error);
+            return response.status(500).json({ error: 'Gagal menghapus siswa' });
         }
     }
 }

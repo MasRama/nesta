@@ -27,7 +27,7 @@ class StudentService {
     /**
      * Get all students with pagination and filters
      */
-    async getStudents(page: number = 1, limit: number = 10, search?: string, kelas?: string) {
+    async getStudents(page: number = 1, limit: number = 10, search?: string, kelas?: string, gender?: string) {
         let query = DB.from('students').select('*');
         
         // Apply search filter
@@ -42,6 +42,11 @@ class StudentService {
         // Apply class filter
         if (kelas) {
             query = query.where('kelas', kelas);
+        }
+        
+        // Apply gender filter
+        if (gender) {
+            query = query.where('jenis_kelamin', gender);
         }
         
         // Get total count for pagination
@@ -130,6 +135,22 @@ class StudentService {
             is_active: false,
             updated_at: dayjs().valueOf()
         });
+    }
+    
+    /**
+     * Bulk delete students (soft delete)
+     */
+    async bulkDeleteStudents(ids: string[]) {
+        if (!ids || ids.length === 0) {
+            return 0;
+        }
+        
+        await DB.table('students').whereIn('id', ids).update({
+            is_active: false,
+            updated_at: dayjs().valueOf()
+        });
+        
+        return ids.length;
     }
     
     /**
@@ -398,7 +419,7 @@ class StudentService {
     /**
      * Export students to CSV format
      */
-    async exportToCSV(filters?: { search?: string, kelas?: string }): Promise<string> {
+    async exportToCSV(filters?: { search?: string, kelas?: string, gender?: string }): Promise<string> {
         let query = DB.from('students').where('is_active', true);
 
         // Apply filters
@@ -412,6 +433,10 @@ class StudentService {
 
         if (filters?.kelas) {
             query = query.where('kelas', filters.kelas);
+        }
+        
+        if (filters?.gender) {
+            query = query.where('jenis_kelamin', filters.gender);
         }
 
         const students = await query.orderBy('kelas').orderBy('nama');

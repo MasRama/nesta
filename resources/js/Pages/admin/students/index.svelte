@@ -16,16 +16,31 @@
    let isLoading = false;
    let searchQuery = filters.search || '';
    let selectedClass = filters.kelas || '';
+   let selectedGender = filters.gender || '';
    let showImportModal = false;
    let csvFile = null;
    let importResult = null;
    let currentSection = 'students'; // Tab navigation state
+   let selectedStudents = [];
+   let selectAll = false;
+   
+   // Reactive statement to handle select all changes
+   $: if (selectAll && students.length > 0) {
+      selectedStudents = students.map(s => s.id);
+   } else if (!selectAll && selectedStudents.length === students.length) {
+      selectedStudents = [];
+   }
    
    function handleSearch() {
       const params = new URLSearchParams();
       if (searchQuery) params.set('search', searchQuery);
       if (selectedClass) params.set('kelas', selectedClass);
+      if (selectedGender) params.set('gender', selectedGender);
       params.set('page', '1');
+      
+      // Reset selections when filtering
+      selectedStudents = [];
+      selectAll = false;
       
       router.visit(`/admin/students?${params.toString()}`);
    }
@@ -34,7 +49,12 @@
       const params = new URLSearchParams();
       if (searchQuery) params.set('search', searchQuery);
       if (selectedClass) params.set('kelas', selectedClass);
+      if (selectedGender) params.set('gender', selectedGender);
       params.set('page', newPage.toString());
+      
+      // Reset selections when changing page
+      selectedStudents = [];
+      selectAll = false;
       
       router.visit(`/admin/students?${params.toString()}`);
    }
@@ -61,8 +81,60 @@
       const params = new URLSearchParams();
       if (searchQuery) params.set('search', searchQuery);
       if (selectedClass) params.set('kelas', selectedClass);
+      if (selectedGender) params.set('gender', selectedGender);
       
       window.open(`/admin/students/export-csv?${params.toString()}`);
+   }
+   
+   
+   function toggleStudentSelection(studentId) {
+      if (selectedStudents.includes(studentId)) {
+         selectedStudents = selectedStudents.filter(id => id !== studentId);
+         selectAll = false;
+      } else {
+         selectedStudents = [...selectedStudents, studentId];
+         // Update selectAll checkbox state
+         selectAll = selectedStudents.length === students.length - 1 ? true : selectAll;
+      }
+   }
+   
+   async function bulkDeleteStudents() {
+      if (selectedStudents.length === 0) {
+         alert('Pilih siswa yang ingin dihapus');
+         return;
+      }
+      
+      if (!confirm(`Apakah Anda yakin ingin menghapus ${selectedStudents.length} siswa?`)) {
+         return;
+      }
+      
+      isLoading = true;
+      try {
+         const response = await fetch('/admin/students/bulk-delete', {
+            method: 'POST',
+            headers: {
+               'Content-Type': 'application/json',
+               'X-Inertia': 'true'
+            },
+            body: JSON.stringify({ ids: selectedStudents })
+         });
+         
+         const result = await response.json();
+         
+         if (response.ok) {
+            alert(result.message);
+            selectedStudents = [];
+            selectAll = false;
+            router.reload();
+         } else {
+            alert(result.error || 'Gagal menghapus siswa');
+         }
+      } catch (error) {
+         console.error('Error bulk deleting students:', error);
+         alert('Gagal menghapus siswa');
+      } finally {
+         isLoading = false;
+      }
    }
    
    function downloadTemplate() {
@@ -169,6 +241,15 @@
                         <option value={kelas}>{kelas}</option>
                      {/each}
                   </select>
+                  <select
+                     bind:value={selectedGender}
+                     on:change={handleSearch}
+                     class="px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-red-500 focus:border-transparent bg-white/80 backdrop-blur-sm"
+                  >
+                     <option value="">Semua Gender</option>
+                     <option value="Laki - Laki">Laki - Laki</option>
+                     <option value="Perempuan">Perempuan</option>
+                  </select>
                   <button
                      on:click={handleSearch}
                      class="px-6 py-3 bg-gradient-to-r from-red-600 to-rose-600 text-white rounded-xl hover:from-red-700 hover:to-rose-700 transition-all shadow-lg font-medium"
@@ -178,41 +259,46 @@
                </div>
 
                <!-- Action Buttons -->
-               <div class="flex flex-col sm:flex-row gap-3">
-                  <!-- Primary Actions -->
-                  <div class="flex gap-3">
+               <div class="flex flex-wrap gap-3">
+                  <button
+                     on:click={createStudent}
+                     class="px-6 py-3 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-xl hover:from-green-700 hover:to-emerald-700 transition-all shadow-lg font-medium flex items-center space-x-2 whitespace-nowrap"
+                  >
+                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
+                     </svg>
+                     <span>Tambah Siswa</span>
+                  </button>
+                  {#if selectedStudents.length > 0}
                      <button
-                        on:click={createStudent}
-                        class="px-6 py-3 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-xl hover:from-green-700 hover:to-emerald-700 transition-all shadow-lg font-medium flex items-center space-x-2"
+                        on:click={bulkDeleteStudents}
+                        disabled={isLoading}
+                        class="px-6 py-3 bg-gradient-to-r from-red-600 to-rose-600 text-white rounded-xl hover:from-red-700 hover:to-rose-700 transition-all shadow-lg font-medium flex items-center space-x-2 disabled:opacity-50 whitespace-nowrap"
                      >
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
+                           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
                         </svg>
-                        <span>Tambah Siswa</span>
+                        <span>Hapus Terpilih ({selectedStudents.length})</span>
                      </button>
-                  </div>
-                  
-                  <!-- Secondary Actions -->
-                  <div class="flex gap-2">
-                     <button
-                        on:click={() => showImportModal = true}
-                        class="px-4 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl hover:from-blue-700 hover:to-indigo-700 transition-all shadow-lg font-medium flex items-center space-x-2"
-                     >
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 19l3 3m0 0l3-3m-3 3V10"/>
-                        </svg>
-                        <span class="hidden sm:inline">Import</span>
-                     </button>
-                     <button
-                        on:click={exportCSV}
-                        class="px-4 py-3 bg-gradient-to-r from-orange-600 to-red-600 text-white rounded-xl hover:from-orange-700 hover:to-red-700 transition-all shadow-lg font-medium flex items-center space-x-2"
-                     >
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
-                        </svg>
-                        <span class="hidden sm:inline">Export</span>
-                     </button>
-                  </div>
+                  {/if}
+                  <button
+                     on:click={() => showImportModal = true}
+                     class="px-4 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl hover:from-blue-700 hover:to-indigo-700 transition-all shadow-lg font-medium flex items-center space-x-2 whitespace-nowrap"
+                  >
+                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 19l3 3m0 0l3-3m-3 3V10"/>
+                     </svg>
+                     <span class="hidden sm:inline">Import</span>
+                  </button>
+                  <button
+                     on:click={exportCSV}
+                     class="px-4 py-3 bg-gradient-to-r from-orange-600 to-red-600 text-white rounded-xl hover:from-orange-700 hover:to-red-700 transition-all shadow-lg font-medium flex items-center space-x-2 whitespace-nowrap"
+                  >
+                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
+                     </svg>
+                     <span class="hidden sm:inline">Export</span>
+                  </button>
                </div>
             </div>
          </div>
@@ -223,6 +309,13 @@
                <table class="min-w-full divide-y divide-gray-200">
                   <thead class="bg-gradient-to-r from-red-50 to-rose-50">
                      <tr>
+                        <th class="px-6 py-4 text-left w-16">
+                           <input
+                              type="checkbox"
+                              bind:checked={selectAll}
+                              class="w-4 h-4 text-red-600 bg-gray-100 border-gray-300 rounded focus:ring-red-500 focus:ring-2 cursor-pointer"
+                           />
+                        </th>
                         <th class="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">NIPD</th>
                         <th class="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Nama</th>
                         <th class="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Kelas</th>
@@ -235,6 +328,14 @@
                   <tbody class="bg-white/80 backdrop-blur-sm divide-y divide-gray-200">
                      {#each students as student, index}
                         <tr class="hover:bg-red-50/50 transition-colors duration-200" style="animation-delay: {index * 0.05}s">
+                           <td class="px-6 py-4 whitespace-nowrap w-16">
+                              <input
+                                 type="checkbox"
+                                 checked={selectedStudents.includes(student.id)}
+                                 on:change={() => toggleStudentSelection(student.id)}
+                                 class="w-4 h-4 text-red-600 bg-gray-100 border-gray-300 rounded focus:ring-red-500 focus:ring-2 cursor-pointer"
+                              />
+                           </td>
                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{student.nipd}</td>
                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-medium">{student.nama}</td>
                            <td class="px-6 py-4 whitespace-nowrap">

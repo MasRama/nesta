@@ -217,6 +217,7 @@ Route.get("/admin/students/:id", [Auth, RoleAuth.admin()], StudentController.sho
 Route.get("/admin/students/:id/edit", [Auth, RoleAuth.admin()], StudentController.edit);
 Route.put("/admin/students/:id", [Auth, RoleAuth.admin()], StudentController.update);
 Route.delete("/admin/students/:id", [Auth, RoleAuth.admin()], StudentController.destroy);
+Route.post("/admin/students/bulk-delete", [Auth, RoleAuth.admin()], StudentController.bulkDelete);
 
 // CSV Import/Export Routes
 Route.post("/admin/students/import-csv", [Auth, RoleAuth.admin()], StudentController.importCSV);
