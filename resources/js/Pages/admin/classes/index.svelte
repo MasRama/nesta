@@ -27,9 +27,8 @@
    let notes = '';
    let isSubmitting = false;
 
-   // Filtered teachers based on selected subject
+   // Note: Removed teacher filtering - all teachers are now available for any subject
    let filteredTeachers = [];
-   let showTeacherWarning = false;
 
    // Search and filter
    let searchTerm = '';
@@ -47,14 +46,9 @@
       }
    }
 
-   // Reactive teacher filtering based on selected subject
+   // Set all teachers as available (no filtering by subject)
    $: {
-      if (selectedSubject) {
-         filterTeachersBySubject(selectedSubject);
-      } else {
-         filteredTeachers = availableTeachers;
-         showTeacherWarning = false;
-      }
+      filteredTeachers = availableTeachers;
    }
 
    // Cache untuk teachers data
@@ -143,37 +137,9 @@
       notes = '';
       isSubmitting = false;
       filteredTeachers = [];
-      showTeacherWarning = false;
    }
 
-   async function filterTeachersBySubject(subjectId) {
-      try {
-         const response = await fetch(`/api/teachers/by-subject/${subjectId}`, {
-            headers: {
-               'X-Inertia': 'true'
-            }
-         });
-
-         if (response.ok) {
-            const result = await response.json();
-            filteredTeachers = result.data || [];
-            showTeacherWarning = filteredTeachers.length === 0;
-
-            // Reset selected teacher if current selection is not in filtered list
-            if (selectedSubjectTeacher && !filteredTeachers.find(t => t.id === selectedSubjectTeacher)) {
-               selectedSubjectTeacher = '';
-            }
-         } else {
-            console.error('Failed to fetch teachers by subject');
-            filteredTeachers = availableTeachers;
-            showTeacherWarning = false;
-         }
-      } catch (error) {
-         console.error('Error filtering teachers by subject:', error);
-         filteredTeachers = availableTeachers;
-         showTeacherWarning = false;
-      }
-   }
+   // Function removed: No longer filtering teachers by subject - all teachers available
 
    async function assignTeacher() {
       if (!selectedClass || !selectedTeacher || isSubmitting) return;
@@ -240,11 +206,7 @@
          return;
       }
 
-      // Additional validation for teacher-subject assignment
-      if (showTeacherWarning) {
-         alert('Tidak dapat menambahkan mata pelajaran. Guru belum di-assign ke mata pelajaran ini.');
-         return;
-      }
+      // Validation removed: Teachers can now be assigned freely to any subject
 
       // Validate time logic
       if (startTime >= endTime) {
@@ -606,30 +568,27 @@
                               Guru Pengajar <span class="text-red-500">*</span>
                            </label>
 
-                           {#if showTeacherWarning}
-                              <div class="mb-3 p-3 bg-yellow-50 border border-yellow-200 rounded-md">
-                                 <div class="flex">
-                                    <div class="flex-shrink-0">
-                                       <svg class="h-5 w-5 text-yellow-400" viewBox="0 0 20 20" fill="currentColor">
-                                          <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
-                                       </svg>
-                                    </div>
-                                    <div class="ml-3">
-                                       <p class="text-sm text-yellow-700">
-                                          <strong>Peringatan:</strong> Tidak ada guru yang di-assign ke mata pelajaran ini.
-                                          Silakan assign guru ke mata pelajaran terlebih dahulu di menu <strong>Mata Pelajaran</strong>.
-                                       </p>
-                                    </div>
+                           <div class="mb-3 p-3 bg-blue-50 border border-blue-200 rounded-md">
+                              <div class="flex">
+                                 <div class="flex-shrink-0">
+                                    <svg class="h-5 w-5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                    </svg>
+                                 </div>
+                                 <div class="ml-3">
+                                    <p class="text-sm text-blue-700">
+                                       <strong>Info:</strong> Anda dapat memilih guru mana saja untuk mengajar mata pelajaran ini.
+                                    </p>
                                  </div>
                               </div>
-                           {/if}
+                           </div>
 
                            <select
                               id="subject-teacher-select"
                               bind:value={selectedSubjectTeacher}
                               class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                               required
-                              disabled={!selectedSubject || showTeacherWarning}
+                              disabled={!selectedSubject}
                            >
                               <option value="">
                                  {selectedSubject ? '-- Pilih Guru --' : '-- Pilih Mata Pelajaran Terlebih Dahulu --'}
@@ -640,8 +599,8 @@
                            </select>
 
                            {#if selectedSubject && filteredTeachers.length > 0}
-                              <p class="text-sm text-green-600 mt-1">
-                                 ✓ Menampilkan {filteredTeachers.length} guru yang sudah di-assign ke mata pelajaran ini
+                              <p class="text-sm text-gray-600 mt-1">
+                                 {filteredTeachers.length} guru tersedia
                               </p>
                            {/if}
                         </div>

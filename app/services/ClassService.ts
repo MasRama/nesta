@@ -306,16 +306,7 @@ class ClassService {
                 throw new Error('Guru tidak ditemukan');
             }
 
-            // Validate that teacher is assigned to this subject
-            const teacherSubjectAssignment = await DB.from('teacher_subjects')
-                .where('teacher_id', teacherId)
-                .where('subject_id', subjectId)
-                .where('is_active', true)
-                .first();
-
-            if (!teacherSubjectAssignment) {
-                throw new Error('Guru belum di-assign ke mata pelajaran ini. Silakan assign guru ke mata pelajaran terlebih dahulu di menu Mata Pelajaran.');
-            }
+            // Note: Removed teacher_subjects validation to allow free teacher assignment
 
             // Validate schedule inputs
             if (!day || !startTime || !endTime) {
