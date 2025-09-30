@@ -29,7 +29,7 @@ class ParentService {
      * Get all parents with pagination and filters
      */
     async getParents(page: number = 1, limit: number = 10, search?: string) {
-        let query = DB.from('parents').select('*').where('is_active', true);
+        let query = DB.from('parents').select('*');
         
         // Apply search filter
         if (search) {
@@ -77,7 +77,10 @@ class ParentService {
      * Get parent by email
      */
     async getParentByEmail(email: string) {
-        return await DB.from('parents').where('email', email).first();
+        return await DB.from('parents')
+            .where('email', email)
+            .where('is_active', true)
+            .first();
     }
     
     /**
@@ -168,12 +171,30 @@ class ParentService {
     }
     
     /**
-     * Delete parent (soft delete)
+     * Delete parent (hard delete)
+     * Also deletes the corresponding user account
      */
     async deleteParent(id: string) {
-        await DB.from('parents').where('id', id).update({
-            is_active: false,
-            updated_at: dayjs().valueOf()
+        // Get parent data first to find the associated user
+        const parent = await this.getParentById(id);
+        
+        if (!parent) {
+            throw new Error('Parent tidak ditemukan');
+        }
+
+        // Use transaction to ensure atomicity
+        await DB.transaction(async (trx) => {
+            // Delete parent-student relationships first
+            await trx.from('parent_students').where('parent_id', id).delete();
+
+            // Delete parent from parents table
+            await trx.from('parents').where('id', id).delete();
+
+            // Delete the corresponding user account
+            await trx.from('users')
+                .where('email', parent.email)
+                .where('role', 'parent')
+                .delete();
         });
     }
     
