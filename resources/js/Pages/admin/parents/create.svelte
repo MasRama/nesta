@@ -12,79 +12,12 @@
       email: '',
       password: '',
       phone: '',
-      notes: '',
-      students: []
+      notes: ''
    };
    
    let isLoading = false;
    let isSubmitted = false; // Track if form has been submitted
    let currentSection = 'parents';
-
-   // Student search state
-   let studentSearch = {
-      nipd: '',
-      relationship_type: 'wali',
-      is_primary_contact: false,
-      isSearching: false,
-      foundStudent: null,
-      error: null
-   };
-   
-   async function searchStudent() {
-      if (!studentSearch.nipd.trim()) {
-         studentSearch.error = 'NIPD harus diisi';
-         return;
-      }
-      
-      studentSearch.isSearching = true;
-      studentSearch.error = null;
-      studentSearch.foundStudent = null;
-      
-      try {
-         const response = await fetch(`/api/students/search-nipd?nipd=${encodeURIComponent(studentSearch.nipd)}`);
-         const data = await response.json();
-         
-         if (response.ok) {
-            studentSearch.foundStudent = data.student;
-            
-            // Check if student already added
-            const alreadyAdded = form.students.some(s => s.nipd === data.student.nipd);
-            if (alreadyAdded) {
-               studentSearch.error = 'Siswa sudah ditambahkan';
-               studentSearch.foundStudent = null;
-            }
-         } else {
-            studentSearch.error = data.error || 'Siswa tidak ditemukan';
-         }
-      } catch (error) {
-         console.error('Error searching student:', error);
-         studentSearch.error = 'Terjadi kesalahan saat mencari siswa';
-      } finally {
-         studentSearch.isSearching = false;
-      }
-   }
-   
-   function addStudent() {
-      if (!studentSearch.foundStudent) return;
-      
-      form.students = [...form.students, {
-         nipd: studentSearch.foundStudent.nipd,
-         nama: studentSearch.foundStudent.nama,
-         kelas: studentSearch.foundStudent.kelas,
-         relationship_type: studentSearch.relationship_type,
-         is_primary_contact: studentSearch.is_primary_contact
-      }];
-      
-      // Reset search
-      studentSearch.nipd = '';
-      studentSearch.foundStudent = null;
-      studentSearch.relationship_type = 'wali';
-      studentSearch.is_primary_contact = false;
-   }
-   
-   function removeStudent(index) {
-      form.students = form.students.filter((_, i) => i !== index);
-   }
    
    async function handleSubmit(event) {
       // Prevent default and immediate disable
@@ -100,13 +33,18 @@
       try {
          const loadingToast = showToast.loading('Menambahkan wali murid...');
 
-         await parentAPI.create(form);
+         const response = await parentAPI.create(form);
 
          showToast.dismiss(loadingToast);
          showToast.success('Wali murid berhasil ditambahkan');
-
-         // Redirect to parents list after successful creation
-         router.visit('/admin/parents');
+         
+         // Redirect to edit page to add children
+         const parentId = response.data.data.id;
+         showToast.info('Silakan tambahkan anak di halaman edit');
+         
+         setTimeout(() => {
+            router.visit(`/admin/parents/${parentId}/edit`);
+         }, 1500);
 
       } catch (error) {
          console.error('Error creating parent:', error);
@@ -126,14 +64,6 @@
    
    function goBack() {
       router.visit('/admin/parents');
-   }
-
-   // Handle Enter key for NIPD search
-   function handleNipdKeydown(event) {
-      if (event.key === 'Enter') {
-         event.preventDefault();
-         searchStudent();
-      }
    }
 </script>
 
@@ -162,7 +92,7 @@
                </button>
             </div>
             <h2 class="text-3xl font-bold text-gray-900 mb-2">Tambah Wali Murid Baru</h2>
-            <p class="text-gray-600">Isi form di bawah untuk menambahkan wali murid baru</p>
+            <p class="text-gray-600">Isi informasi dasar wali murid, setelah disimpan Anda dapat menambahkan anak</p>
          </div>
 
          <form on:submit={handleSubmit} class="space-y-6">
@@ -253,130 +183,20 @@
                </div>
             </div>
 
-            <!-- Student Management -->
-            <div class="bg-white rounded-xl shadow-sm border border-gray-200 fade-in-up" style="animation-delay: 0.2s">
-               <div class="px-6 py-4 border-b border-gray-200">
-                  <h3 class="text-lg font-medium text-gray-900">Manajemen Anak</h3>
-                  <p class="text-sm text-gray-600 mt-1">Tambahkan siswa yang menjadi anak dari wali murid ini</p>
-               </div>
-               <div class="p-6 space-y-6">
-                  <!-- Add Student Form -->
-                  <div class="bg-gray-50 rounded-lg p-4 space-y-4">
-                     <h4 class="font-medium text-gray-900">Tambah Anak</h4>
-                     
-                     <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <div>
-                           <label for="nipd-search" class="block text-sm font-medium text-gray-700 mb-2">NIPD Siswa</label>
-                           <div class="flex gap-2">
-                              <input
-                                 type="text"
-                                 id="nipd-search"
-                                 bind:value={studentSearch.nipd}
-                                 on:keydown={handleNipdKeydown}
-                                 class="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
-                                 placeholder="Masukkan NIPD"
-                              />
-                              <button
-                                 type="button"
-                                 on:click={searchStudent}
-                                 disabled={studentSearch.isSearching}
-                                 class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
-                              >
-                                 {#if studentSearch.isSearching}
-                                    <svg class="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
-                                       <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                                       <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                    </svg>
-                                 {:else}
-                                    Cari
-                                 {/if}
-                              </button>
-                           </div>
-                        </div>
-
-                        <div>
-                           <label for="relationship-type" class="block text-sm font-medium text-gray-700 mb-2">Hubungan</label>
-                           <select
-                              id="relationship-type"
-                              bind:value={studentSearch.relationship_type}
-                              class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
-                           >
-                              <option value="ayah">Ayah</option>
-                              <option value="ibu">Ibu</option>
-                              <option value="wali">Wali</option>
-                              <option value="lainnya">Lainnya</option>
-                           </select>
-                        </div>
-
-                        <div class="flex items-end">
-                           <label class="flex items-center">
-                              <input
-                                 type="checkbox"
-                                 bind:checked={studentSearch.is_primary_contact}
-                                 class="rounded border-gray-300 text-red-600 focus:ring-red-500"
-                              />
-                              <span class="ml-2 text-sm text-gray-700">Kontak utama</span>
-                           </label>
-                        </div>
-                     </div>
-
-                     {#if studentSearch.error}
-                        <div class="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg p-3">
-                           {studentSearch.error}
-                        </div>
-                     {/if}
-
-                     {#if studentSearch.foundStudent}
-                        <div class="bg-green-50 border border-green-200 rounded-lg p-4">
-                           <div class="flex items-center justify-between">
-                              <div>
-                                 <h5 class="font-medium text-green-900">{studentSearch.foundStudent.nama}</h5>
-                                 <p class="text-sm text-green-700">NIPD: {studentSearch.foundStudent.nipd} | Kelas: {studentSearch.foundStudent.kelas}</p>
-                              </div>
-                              <button
-                                 type="button"
-                                 on:click={addStudent}
-                                 class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
-                              >
-                                 Tambahkan
-                              </button>
-                           </div>
-                        </div>
-                     {/if}
+            <!-- Info Box -->
+            <div class="bg-blue-50 border border-blue-200 rounded-xl p-4 fade-in-up" style="animation-delay: 0.2s">
+               <div class="flex">
+                  <div class="flex-shrink-0">
+                     <svg class="h-5 w-5 text-blue-400" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/>
+                     </svg>
                   </div>
-
-                  <!-- Added Students List -->
-                  {#if form.students.length > 0}
-                     <div>
-                        <h4 class="font-medium text-gray-900 mb-3">Daftar Anak ({form.students.length})</h4>
-                        <div class="space-y-2">
-                           {#each form.students as student, index}
-                              <div class="flex items-center justify-between bg-gray-50 rounded-lg p-3">
-                                 <div>
-                                    <h5 class="font-medium text-gray-900">{student.nama}</h5>
-                                    <p class="text-sm text-gray-600">
-                                       NIPD: {student.nipd} | Kelas: {student.kelas} | 
-                                       Hubungan: {student.relationship_type}
-                                       {#if student.is_primary_contact}
-                                          <span class="text-blue-600 font-medium">• Kontak Utama</span>
-                                       {/if}
-                                    </p>
-                                 </div>
-                                 <button
-                                    type="button"
-                                    on:click={() => removeStudent(index)}
-                                    class="text-red-600 hover:text-red-800 transition-colors"
-                                    aria-label="Hapus siswa"
-                                 >
-                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
-                                    </svg>
-                                 </button>
-                              </div>
-                           {/each}
-                        </div>
-                     </div>
-                  {/if}
+                  <div class="ml-3">
+                     <h3 class="text-sm font-medium text-blue-800">Tentang Manajemen Anak</h3>
+                     <p class="mt-1 text-sm text-blue-700">
+                        Setelah menyimpan data wali murid, Anda akan diarahkan ke halaman edit untuk menambahkan anak dengan mencari NIPD siswa.
+                     </p>
+                  </div>
                </div>
             </div>
 

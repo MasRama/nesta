@@ -76,22 +76,7 @@ class ParentController {
 
             console.log(`[${requestId}] Calling ParentService.createParent`);
             const parent = await ParentService.createParent(data);
-            console.log(`[${requestId}] Parent created successfully`);
-
-            // Add students if provided
-            if (data.students && Array.isArray(data.students)) {
-                for (const studentData of data.students) {
-                    const student = await StudentService.getStudentByNIPD(studentData.nipd);
-                    if (student) {
-                        await ParentService.addStudentToParent(
-                            parent.id,
-                            student.id,
-                            studentData.relationship_type || 'wali',
-                            studentData.is_primary_contact || false
-                        );
-                    }
-                }
-            }
+            console.log(`[${requestId}] Parent created successfully with ID: ${parent.id}`);
 
             return response.status(201).json({
                 success: true,

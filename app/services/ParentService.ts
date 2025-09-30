@@ -207,6 +207,17 @@ class ParentService {
      * Add student to parent
      */
     async addStudentToParent(parentId: string, studentId: string, relationshipType: string, isPrimaryContact: boolean = false) {
+        // Check if relationship already exists
+        const existing = await DB.from('parent_students')
+            .where('parent_id', parentId)
+            .where('student_id', studentId)
+            .where('relationship_type', relationshipType)
+            .first();
+            
+        if (existing) {
+            throw new Error(`Siswa sudah ditambahkan dengan hubungan ${relationshipType}`);
+        }
+        
         const relationData = {
             id: randomUUID(),
             parent_id: parentId,
