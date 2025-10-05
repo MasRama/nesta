@@ -69,6 +69,33 @@ class Autenticate {
    }
 
    /**
+    * Processes student login by creating a new session
+    * @param {Object} student - The student object containing student details
+    * @param {Request} request - The HTTP request object
+    * @param {Response} response - The HTTP response object
+    * 
+    * @description
+    * 1. Generates a unique session token
+    * 2. Creates a session record in the database with student_id
+    * 3. Sets a session cookie
+    * 4. Redirects to the student dashboard
+    */
+   async processStudent(student, request: Request, response: Response) {
+      const token = randomUUID();
+
+      await DB.table("sessions").insert({
+         id: token,
+         student_id: student.id,
+         user_agent: request.headers["user-agent"],
+      });
+
+      // Set cookie with 60-day expiration and redirect to student dashboard
+      response
+         .cookie("auth_id", token, 1000 * 60 * 60 * 24 * 60)
+         .redirect("/dashboard/student");
+   }
+
+   /**
     * Handles user logout by removing the session
     * @param {Request} request - The HTTP request object
     * @param {Response} response - The HTTP response object

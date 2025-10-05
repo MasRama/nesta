@@ -31,6 +31,7 @@ Route.get("/", HomeController.index);
  * ------------------------------------------------
  * GET   /login - Login page
  * POST  /login - Process login (school auth)
+ * POST  /student/login - Process student login (format: nipd@spensagi.id)
  * GET   /register - Registration page
  * POST  /register - Process registration (school auth)
  * POST  /logout - Logout user
@@ -39,6 +40,7 @@ Route.get("/", HomeController.index);
  */
 Route.get("/login", AuthController.loginPage);
 Route.post("/login", SchoolAuthController.processLogin);
+Route.post("/student/login", AuthController.processStudentLogin);
 Route.get("/register", AuthController.registerPage);
 Route.post("/register", SchoolAuthController.processRegister);
 Route.post("/logout", AuthController.logout);

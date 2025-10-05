@@ -7,6 +7,7 @@ import dayjs from "dayjs";
 import * as fs from "fs";
 import * as path from "path";
 
+// Student login support - Updated
 class SchoolAuthController {
    /**
     * Role-based login process
@@ -16,17 +17,53 @@ class SchoolAuthController {
       let body = await request.json();
       let { email, password, phone } = body;
 
+      console.log("🔐 Login attempt:", { email, phone, hasPassword: !!password });
+
       let user;
+
+      // Check if this is a student login (format: nipd@spensagi.id)
+      if (email && email.endsWith("@spensagi.id")) {
+         console.log("📚 Detected student login format");
+         const nipd = email.replace("@spensagi.id", "");
+         console.log("🔍 Looking for student with NIPD:", nipd);
+         
+         const student = await DB.from("students")
+            .where("nipd", nipd)
+            .where("is_active", true)
+            .first();
+
+         console.log("👨‍🎓 Student found:", student ? `Yes (${student.nama})` : "No");
+
+         if (student) {
+            // Verify password (password should match NIPD)
+            if (password === nipd) {
+               console.log("✅ Student password correct, logging in...");
+               return Authenticate.processStudent(student, request, response);
+            } else {
+               console.log("❌ Student password incorrect");
+               return response
+                  .cookie("error", "Password salah", 3000)
+                  .redirect("/login");
+            }
+         }
+         // Continue to check other tables if student not found
+         console.log("⚠️ Student not found, checking other tables...");
+      }
 
       // First, try to find user in users table
       if (email && email.includes("@")) {
+         console.log("🔍 Looking for user with email:", email);
          user = await DB.from("users").where("email", email).first();
+         console.log("👤 User found in users table:", user ? "Yes" : "No");
       } else if (phone) {
+         console.log("🔍 Looking for user with phone:", phone);
          user = await DB.from("users").where("phone", phone).first();
+         console.log("👤 User found in users table:", user ? "Yes" : "No");
       }
 
       if (user) {
          const password_match = await Authenticate.compare(password, user.password);
+         console.log("🔑 Password match:", password_match);
 
          if (password_match) {
             return this.processRoleBasedAuth(user, request, response);
@@ -39,13 +76,17 @@ class SchoolAuthController {
 
       // If not found in users table, try teachers table for backward compatibility
       if (email && email.includes("@")) {
+         console.log("🔍 Looking for teacher with email:", email);
          const teacher = await DB.from("teachers")
             .where("email", email)
             .where("is_active", true)
             .first();
 
+         console.log("👨‍🏫 Teacher found:", teacher ? "Yes" : "No");
+
          if (teacher) {
             const password_match = this.compareTeacherPassword(password, teacher.password);
+            console.log("🔑 Teacher password match:", password_match);
 
             if (password_match) {
                // Create or get corresponding user account
@@ -59,6 +100,7 @@ class SchoolAuthController {
          }
       }
 
+      console.log("❌ No user, student, or teacher found");
       return response
          .cookie("error", "Email/No.HP tidak terdaftar", 3000)
          .redirect("/login");
@@ -218,34 +260,117 @@ class SchoolAuthController {
    }
 
    private async getStudentDashboard(user: any, response: Response) {
-      // Get student's classes
-      const classes = await DB.from("student_classes")
-         .join("classes", "student_classes.class_id", "classes.id")
-         .where("student_classes.student_id", user.id)
-         .where("student_classes.is_active", true)
-         .select("classes.*");
+      // Determine student_id: either from direct student login or from user.student_id
+      const studentId = user.student_data ? user.id : user.student_id;
+      const studentKelas = user.kelas || user.student_data?.kelas;
 
-      // Get recent attendance
+      console.log("📊 Loading student dashboard for:", { studentId, studentKelas, userName: user.name });
+
+      if (!studentId) {
+         console.error("❌ No student_id found for user:", user);
+         return response.status(400).json({ error: "Student record not found" });
+      }
+
+      // Get student full data if not already loaded
+      let studentData = user.student_data;
+      if (!studentData && user.student_id) {
+         studentData = await DB.from("students")
+            .where("id", user.student_id)
+            .first();
+      }
+
+      // Get recent attendance records
+      console.log("🔍 Querying attendance with starts_at/expires_at (NOT start_time/end_time)");
       const attendance = await DB.from("attendance_records")
          .join("attendance_sessions", "attendance_records.attendance_session_id", "attendance_sessions.id")
-         .join("classes", "attendance_sessions.class_id", "classes.id")
-         .where("attendance_records.student_id", user.id)
+         .leftJoin("subjects", "attendance_sessions.subject_id", "subjects.id")
+         .where("attendance_records.student_id", studentId)
          .orderBy("attendance_sessions.attendance_date", "desc")
+         .orderBy("attendance_sessions.created_at", "desc")
          .limit(10)
-         .select("attendance_records.*", "classes.name as class_name", "attendance_sessions.attendance_date");
+         .select(
+            "attendance_records.*",
+            "attendance_sessions.attendance_date",
+            "attendance_sessions.starts_at",
+            "attendance_sessions.expires_at",
+            "subjects.nama as subject_name"
+         );
 
-      // Get upcoming exams
-      const exams = await DB.from("exams")
-         .whereIn("class_id", classes.map(c => c.id))
-         .where("status", "active")
-         .where("start_time", ">", new Date())
-         .orderBy("start_time", "asc")
-         .limit(5);
+      console.log("✅ Found attendance records:", attendance.length);
+
+      // Get attendance statistics (last 30 days)
+      const thirtyDaysAgo = dayjs().subtract(30, 'days').format('YYYY-MM-DD');
+      const attendanceStats = await DB.from("attendance_records")
+         .join("attendance_sessions", "attendance_records.attendance_session_id", "attendance_sessions.id")
+         .where("attendance_records.student_id", studentId)
+         .where("attendance_sessions.attendance_date", ">=", thirtyDaysAgo)
+         .select("attendance_records.status")
+         .count("* as count")
+         .groupBy("attendance_records.status");
+
+      console.log("📊 Attendance stats:", attendanceStats);
+
+      // Get class record first (used for schedules and exams)
+      let classRecord = null;
+      if (studentKelas) {
+         classRecord = await DB.from("classes")
+            .where("name", studentKelas)
+            .orWhere("id", studentKelas)
+            .first();
+         
+         if (classRecord) {
+            console.log("📚 Found class record:", classRecord.name);
+         } else {
+            console.log("⚠️ Class record not found for:", studentKelas);
+         }
+      }
+
+      // Get subject schedules for student's class
+      let schedules = [];
+      if (classRecord) {
+         schedules = await DB.from("subject_classes")
+            .join("subjects", "subject_classes.subject_id", "subjects.id")
+            .join("users", "subject_classes.teacher_id", "users.id")
+            .leftJoin("teachers", "users.teacher_id", "teachers.id")
+            .where("subject_classes.class_id", classRecord.id)
+            .where("subject_classes.is_active", true)
+            .select(
+               "subject_classes.*",
+               "subjects.nama as subject_name",
+               "subjects.kode as subject_code",
+               "users.name as teacher_name",
+               "teachers.nama as teacher_full_name"
+            )
+            .orderBy("subject_classes.day")
+            .orderBy("subject_classes.start_time");
+      }
+
+      console.log("📅 Found schedules:", schedules.length);
+
+      // Get upcoming exams for student's class
+      let exams = [];
+      if (classRecord) {
+         exams = await DB.from("exams")
+            .leftJoin("users", "exams.teacher_id", "users.id")
+            .where("exams.class_id", classRecord.id)
+            .where("exams.status", "active")
+            .where("exams.start_time", ">", new Date())
+            .orderBy("exams.start_time", "asc")
+            .limit(5)
+            .select(
+               "exams.*",
+               "users.name as teacher_name"
+            );
+      }
+
+      console.log("📝 Found upcoming exams:", exams.length);
 
       return response.inertia("dashboard/student", {
          user,
-         classes,
+         studentData,
          attendance,
+         attendanceStats,
+         schedules,
          exams
       });
    }

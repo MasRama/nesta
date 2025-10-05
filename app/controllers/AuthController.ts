@@ -404,6 +404,47 @@ Link ini akan kadaluarsa dalam 24 jam.`,
          await Authenticate.logout(request, response);
       }
    }
+
+   /**
+    * Process student login
+    * Students login with format: nipd@spensagi.id
+    * Password is their NIPD
+    */
+   public async processStudentLogin(request : Request, response: Response) {
+      let { email, password } = await request.json();
+
+      // Validate email format (must be nipd@spensagi.id)
+      if (!email || !email.endsWith("@spensagi.id")) {
+         return response 
+            .cookie("error", "Format email harus nipd@spensagi.id", 3000)
+            .redirect("/login");
+      }
+
+      // Extract NIPD from email
+      const nipd = email.replace("@spensagi.id", "");
+
+      // Find student by NIPD
+      const student = await DB.from("students")
+         .where("nipd", nipd)
+         .where("is_active", true)
+         .first();
+
+      if (!student) {
+         return response 
+            .cookie("error", "NIPD tidak ditemukan atau tidak aktif", 3000)
+            .redirect("/login");
+      }
+
+      // Verify password (password should match NIPD)
+      if (password !== nipd) {
+         return response 
+            .cookie("error", "Password salah", 3000)
+            .redirect("/login");
+      }
+
+      // Process student login
+      return Authenticate.processStudent(student, request, response);
+   }
 }
 
 export default new AuthController();
