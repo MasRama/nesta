@@ -314,6 +314,158 @@ class ParentService {
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         return emailRegex.test(email);
     }
+
+    /**
+     * Parse CSV content with semicolon delimiter for parents
+     */
+    parseCSV(csvContent: string): { data: any[], errors: ValidationError[] } {
+        const errors: ValidationError[] = [];
+        const data: any[] = [];
+
+        // Split lines and trim each line
+        const allLines = csvContent.split('\n').map(line => line.trim());
+
+        // Filter out completely empty lines
+        const lines = allLines.filter(line => line.length > 0);
+
+        if (lines.length < 3) {
+            errors.push({
+                field: 'file',
+                message: 'File CSV harus memiliki minimal 3 baris (header, nomor urut, dan data)',
+                value: null
+            });
+            return { data, errors };
+        }
+
+        // Skip header (baris 1) dan nomor urut (baris 2)
+        // Process data starting from line 3
+        for (let i = 2; i < lines.length; i++) {
+            const line = lines[i];
+
+            // Split by semicolon
+            const columns = line.split(';').map(col => col.trim());
+
+            // Skip lines that are just semicolons or have no meaningful data
+            const meaningfulColumns = columns.filter(col => col && col !== '');
+            if (meaningfulColumns.length === 0) {
+                continue;
+            }
+
+            // Extract parent data from first 5 columns
+            const parentData = {
+                nama: (columns[0] || '').trim(),
+                email: (columns[1] || '').trim(),
+                password: (columns[2] || '').trim(),
+                phone: (columns[3] || '').trim(),
+                notes: (columns[4] || '').trim()
+            };
+
+            // Skip rows where ALL essential fields are empty
+            const hasAnyData = parentData.nama !== '' ||
+                              parentData.email !== '' ||
+                              parentData.password !== '';
+
+            if (!hasAnyData) {
+                continue;
+            }
+
+            // Only process rows that have essential fields (NAMA, EMAIL, PASSWORD)
+            const hasMinimumRequiredData = parentData.nama !== '' &&
+                                         parentData.email !== '' &&
+                                         parentData.password !== '';
+
+            if (!hasMinimumRequiredData) {
+                continue; // Skip incomplete rows silently
+            }
+
+            // Validate the row
+            const rowErrors = this.validateParentData(parentData);
+
+            // Only add data if it passes ALL validations
+            if (rowErrors.length === 0) {
+                data.push(parentData);
+            }
+        }
+
+        return { data, errors };
+    }
+
+    /**
+     * Import parents from CSV
+     */
+    async importFromCSV(csvContent: string): Promise<{ success: number, errors: ValidationError[], duplicates: string[] }> {
+        const { data, errors } = this.parseCSV(csvContent);
+        const duplicates: string[] = [];
+        let success = 0;
+
+        // If there are parsing errors, return early
+        if (errors.length > 0) {
+            return { success, errors, duplicates };
+        }
+
+        // Process each parent
+        for (const parentData of data) {
+            try {
+                // Check for duplicates (Email)
+                const existingByEmail = await this.getParentByEmail(parentData.email);
+                if (existingByEmail) {
+                    duplicates.push(`${parentData.email} (Email)`);
+                    continue;
+                }
+
+                // Create parent
+                await this.createParent(parentData);
+                success++;
+            } catch (error) {
+                errors.push({
+                    field: 'email',
+                    message: `Gagal menyimpan wali murid dengan email ${parentData.email}: ${error.message}`,
+                    value: parentData.email
+                });
+            }
+        }
+
+        return { success, errors, duplicates };
+    }
+
+    /**
+     * Export parents to CSV format
+     */
+    async exportToCSV(filters?: { search?: string }): Promise<string> {
+        let query = DB.from('parents');
+
+        // Apply filters
+        if (filters?.search) {
+            query = query.where(function() {
+                this.where('nama', 'like', `%${filters.search}%`)
+                    .orWhere('email', 'like', `%${filters.search}%`)
+                    .orWhere('phone', 'like', `%${filters.search}%`);
+            });
+        }
+
+        const parents = await query.orderBy('nama');
+
+        // Create CSV content
+        const header = 'NAMA;EMAIL;PASSWORD;TELEPON;CATATAN;;;;;;;;;;;;;;;;;;;;';
+        const numberRow = '1;2;3;4;5;;;;;;;;;;;;;;;;;;;;';
+
+        const dataRows = parents.map(parent => {
+            return `${parent.nama};${parent.email};;${parent.phone || ''};${parent.notes || ''};;;;;;;;;;;;;;;;;;;;`;
+        });
+
+        return [header, numberRow, ...dataRows].join('\n');
+    }
+
+    /**
+     * Generate CSV template for parents
+     */
+    generateCSVTemplate(): string {
+        const header = 'NAMA;EMAIL;PASSWORD;TELEPON;CATATAN;;;;;;;;;;;;;;;;;;;;';
+        const numberRow = '1;2;3;4;5;;;;;;;;;;;;;;;;;;;;';
+        const exampleRow = 'Budi Santoso;budi.santoso@example.com;password123;081234567890;Orang tua siswa kelas 7A;;;;;;;;;;;;;;;;;;;;';
+
+        return [header, numberRow, exampleRow].join('\n');
+    }
 }
 
 export default new ParentService();

@@ -311,6 +311,69 @@ class ParentController {
             return response.status(500).json({ error: 'Gagal menghapus siswa dari wali murid' });
         }
     }
+
+    /**
+     * Import parents from CSV
+     */
+    public async importCSV(request: Request, response: Response) {
+        try {
+            const { csvContent } = await request.json();
+
+            if (!csvContent) {
+                return response.status(400).json({ error: 'File CSV tidak ditemukan' });
+            }
+
+            const result = await ParentService.importFromCSV(csvContent);
+
+            let message = `Import selesai. ${result.success} wali murid berhasil ditambahkan.`;
+
+            return response.json({
+                message,
+                success: result.success,
+                errors: result.errors,
+                duplicates: result.duplicates
+            });
+        } catch (error) {
+            console.error('Error importing CSV:', error);
+            return response.status(500).json({ error: 'Gagal mengimport data CSV' });
+        }
+    }
+
+    /**
+     * Export parents to CSV
+     */
+    public async exportCSV(request: Request, response: Response) {
+        try {
+            const search = request.query.search as string;
+
+            const csvContent = await ParentService.exportToCSV({ search });
+
+            response.setHeader('Content-Type', 'text/csv; charset=utf-8');
+            response.setHeader('Content-Disposition', 'attachment; filename="data_wali_murid.csv"');
+
+            return response.send(csvContent);
+        } catch (error) {
+            console.error('Error exporting CSV:', error);
+            return response.status(500).json({ error: 'Gagal mengexport data CSV' });
+        }
+    }
+
+    /**
+     * Download CSV template
+     */
+    public async downloadTemplate(request: Request, response: Response) {
+        try {
+            const csvContent = ParentService.generateCSVTemplate();
+
+            response.setHeader('Content-Type', 'text/csv; charset=utf-8');
+            response.setHeader('Content-Disposition', 'attachment; filename="template_wali_murid.csv"');
+
+            return response.send(csvContent);
+        } catch (error) {
+            console.error('Error downloading template:', error);
+            return response.status(500).json({ error: 'Gagal mendownload template' });
+        }
+    }
 }
 
 export default new ParentController();

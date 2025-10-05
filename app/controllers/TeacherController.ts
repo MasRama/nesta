@@ -276,6 +276,69 @@ class TeacherController {
             return response.status(500).json({ error: 'Gagal mengambil data guru berdasarkan mata pelajaran' });
         }
     }
+
+    /**
+     * Import teachers from CSV
+     */
+    public async importCSV(request: Request, response: Response) {
+        try {
+            const { csvContent } = await request.json();
+
+            if (!csvContent) {
+                return response.status(400).json({ error: 'File CSV tidak ditemukan' });
+            }
+
+            const result = await TeacherService.importFromCSV(csvContent);
+
+            let message = `Import selesai. ${result.success} guru berhasil ditambahkan.`;
+
+            return response.json({
+                message,
+                success: result.success,
+                errors: result.errors,
+                duplicates: result.duplicates
+            });
+        } catch (error) {
+            console.error('Error importing CSV:', error);
+            return response.status(500).json({ error: 'Gagal mengimport data CSV' });
+        }
+    }
+
+    /**
+     * Export teachers to CSV
+     */
+    public async exportCSV(request: Request, response: Response) {
+        try {
+            const search = request.query.search as string;
+
+            const csvContent = await TeacherService.exportToCSV({ search });
+
+            response.setHeader('Content-Type', 'text/csv; charset=utf-8');
+            response.setHeader('Content-Disposition', 'attachment; filename="data_guru.csv"');
+
+            return response.send(csvContent);
+        } catch (error) {
+            console.error('Error exporting CSV:', error);
+            return response.status(500).json({ error: 'Gagal mengexport data CSV' });
+        }
+    }
+
+    /**
+     * Download CSV template
+     */
+    public async downloadTemplate(request: Request, response: Response) {
+        try {
+            const csvContent = TeacherService.generateCSVTemplate();
+
+            response.setHeader('Content-Type', 'text/csv; charset=utf-8');
+            response.setHeader('Content-Disposition', 'attachment; filename="template_guru.csv"');
+
+            return response.send(csvContent);
+        } catch (error) {
+            console.error('Error downloading template:', error);
+            return response.status(500).json({ error: 'Gagal mendownload template' });
+        }
+    }
 }
 
 export default new TeacherController();

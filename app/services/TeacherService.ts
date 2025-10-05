@@ -358,6 +358,18 @@ class TeacherService {
             }
         }
 
+        // Password validation - only validate if provided (for CSV import)
+        if (data.hasOwnProperty('password')) {
+            if (!data.password || data.password.toString().trim() === '' || data.password.toString().trim().length < 6) {
+                errors.push({
+                    row,
+                    field: 'password',
+                    message: 'Password wajib diisi minimal 6 karakter',
+                    value: data.password
+                });
+            }
+        }
+
         // NIP validation - only validate if NIP is provided and not empty
         if (data.nip && data.nip.toString().trim() !== '') {
             const nip = data.nip.toString().trim();
@@ -750,6 +762,169 @@ class TeacherService {
             console.error("Error checking teacher-subject assignment:", error);
             return false;
         }
+    }
+
+    /**
+     * Parse CSV content with semicolon delimiter for teachers
+     */
+    parseCSV(csvContent: string): { data: any[], errors: ValidationError[] } {
+        const errors: ValidationError[] = [];
+        const data: any[] = [];
+
+        // Split lines and trim each line
+        const allLines = csvContent.split('\n').map(line => line.trim());
+
+        // Filter out completely empty lines
+        const lines = allLines.filter(line => line.length > 0);
+
+        if (lines.length < 3) {
+            errors.push({
+                row: 0,
+                field: 'file',
+                message: 'File CSV harus memiliki minimal 3 baris (header, nomor urut, dan data)',
+                value: null
+            });
+            return { data, errors };
+        }
+
+        // Skip header (baris 1) dan nomor urut (baris 2)
+        // Process data starting from line 3
+        for (let i = 2; i < lines.length; i++) {
+            const line = lines[i];
+            const rowNumber = i + 1; // Display row number (1-based)
+
+            // Split by semicolon
+            const columns = line.split(';').map(col => col.trim());
+
+            // Skip lines that are just semicolons or have no meaningful data
+            const meaningfulColumns = columns.filter(col => col && col !== '');
+            if (meaningfulColumns.length === 0) {
+                continue;
+            }
+
+            // Extract teacher data from first 5 columns
+            const teacherData = {
+                nip: (columns[0] || '').trim(),
+                nama: (columns[1] || '').trim(),
+                email: (columns[2] || '').trim(),
+                password: (columns[3] || '').trim(),
+                phone: (columns[4] || '').trim()
+            };
+
+            // Skip rows where ALL essential fields are empty
+            const hasAnyData = teacherData.nip !== '' ||
+                              teacherData.nama !== '' ||
+                              teacherData.email !== '' ||
+                              teacherData.password !== '';
+
+            if (!hasAnyData) {
+                continue;
+            }
+
+            // Only process rows that have essential fields (NIP, NAMA, EMAIL, PASSWORD)
+            const hasMinimumRequiredData = teacherData.nip !== '' &&
+                                         teacherData.nama !== '' &&
+                                         teacherData.email !== '' &&
+                                         teacherData.password !== '';
+
+            if (!hasMinimumRequiredData) {
+                continue; // Skip incomplete rows silently
+            }
+
+            // Validate the row
+            const rowErrors = this.validateTeacherData(teacherData, rowNumber);
+
+            // Only add data if it passes ALL validations
+            if (rowErrors.length === 0) {
+                data.push(teacherData);
+            }
+        }
+
+        return { data, errors };
+    }
+
+    /**
+     * Import teachers from CSV
+     */
+    async importFromCSV(csvContent: string): Promise<{ success: number, errors: ValidationError[], duplicates: string[] }> {
+        const { data, errors } = this.parseCSV(csvContent);
+        const duplicates: string[] = [];
+        let success = 0;
+
+        // If there are parsing errors, return early
+        if (errors.length > 0) {
+            return { success, errors, duplicates };
+        }
+
+        // Process each teacher
+        for (const teacherData of data) {
+            try {
+                // Check for duplicates (NIP or Email)
+                const existingByNIP = await this.getTeacherByNIP(teacherData.nip);
+                if (existingByNIP) {
+                    duplicates.push(`${teacherData.nip} (NIP)`);
+                    continue;
+                }
+
+                const existingByEmail = await this.getTeacherByEmail(teacherData.email);
+                if (existingByEmail) {
+                    duplicates.push(`${teacherData.email} (Email)`);
+                    continue;
+                }
+
+                // Create teacher
+                await this.createTeacher(teacherData);
+                success++;
+            } catch (error) {
+                errors.push({
+                    row: 0,
+                    field: 'nip',
+                    message: `Gagal menyimpan guru dengan NIP ${teacherData.nip}: ${error.message}`,
+                    value: teacherData.nip
+                });
+            }
+        }
+
+        return { success, errors, duplicates };
+    }
+
+    /**
+     * Export teachers to CSV format
+     */
+    async exportToCSV(filters?: { search?: string }): Promise<string> {
+        let query = DB.from('teachers').where('is_active', true);
+
+        // Apply filters
+        if (filters?.search) {
+            query = query.where(function() {
+                this.where('nama', 'like', `%${filters.search}%`)
+                    .orWhere('nip', 'like', `%${filters.search}%`)
+                    .orWhere('email', 'like', `%${filters.search}%`);
+            });
+        }
+
+        const teachers = await query.orderBy('nama');
+
+        // Create CSV content
+        const header = 'NIP;NAMA;EMAIL;PASSWORD;TELEPON;;;;;;;;;;;;;;;;;;;;';
+        const numberRow = '1;2;3;4;5;;;;;;;;;;;;;;;;;;;;';
+
+        const dataRows = teachers.map(teacher => {
+            return `${teacher.nip};${teacher.nama};${teacher.email};;${teacher.phone || ''};;;;;;;;;;;;;;;;;;;;`;
+        });
+
+        return [header, numberRow, ...dataRows].join('\n');
+    }
+
+    /**
+     * Generate CSV template for teachers
+     */
+    generateCSVTemplate(): string {
+        const header = 'NIP;NAMA;EMAIL;PASSWORD;TELEPON;;;;;;;;;;;;;;;;;;;;';
+        const numberRow = '1;2;3;4;5;;;;;;;;;;;;;;;;;;;;';
+        const exampleRow = '198012152008011001;Dr. Ahmad Santoso;ahmad.santoso@example.com;password123;081234567890;;;;;;;;;;;;;;;;;;;;';
+
+        return [header, numberRow, exampleRow].join('\n');
     }
 }
 

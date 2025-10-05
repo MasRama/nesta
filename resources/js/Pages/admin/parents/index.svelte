@@ -16,6 +16,9 @@
    let searchQuery = '';
    let isLoading = false;
    let currentSection = 'parents'; // Tab navigation state
+   let showImportModal = false;
+   let csvFile = null;
+   let importResult = null;
 
    // Load parents data on component mount
    onMount(() => {
@@ -95,6 +98,67 @@
    function formatDate(dateString) {
       return new Date(dateString).toLocaleDateString('id-ID');
    }
+
+   function exportCSV() {
+      const params = new URLSearchParams();
+      if (searchQuery) params.set('search', searchQuery);
+      
+      window.open(`/admin/parents/export-csv?${params.toString()}`);
+   }
+
+   function downloadTemplate() {
+      window.open('/admin/parents/template-csv');
+   }
+
+   function handleFileSelect(event) {
+      csvFile = event.target.files[0];
+   }
+
+   async function importCSV() {
+      if (!csvFile) {
+         alert('Pilih file CSV terlebih dahulu');
+         return;
+      }
+      
+      isLoading = true;
+      const reader = new FileReader();
+      
+      reader.onload = async (e) => {
+         try {
+            const csvContent = e.target.result;
+            
+            const response = await fetch('/admin/parents/import-csv', {
+               method: 'POST',
+               headers: {
+                  'Content-Type': 'application/json',
+                  'X-Inertia': 'true'
+               },
+               body: JSON.stringify({ csvContent })
+            });
+            
+            const result = await response.json();
+            importResult = result;
+
+            if (result.success > 0) {
+               showToast.success(result.message);
+               // Close modal after successful import
+               setTimeout(() => {
+                  showImportModal = false;
+                  importResult = null;
+                  csvFile = null;
+                  loadParents();
+               }, 2000);
+            }
+         } catch (error) {
+            console.error('Error importing CSV:', error);
+            alert('Gagal mengimport file CSV');
+         } finally {
+            isLoading = false;
+         }
+      };
+      
+      reader.readAsText(csvFile);
+   }
 </script>
 
 <svelte:head>
@@ -132,7 +196,7 @@
                      </div>
                   </div>
                   
-                  <div class="flex gap-3">
+                  <div class="flex flex-wrap gap-3">
                      <button
                         on:click={handleSearch}
                         class="px-4 py-2.5 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors flex items-center gap-2"
@@ -151,6 +215,26 @@
                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
                         </svg>
                         Tambah Wali Murid
+                     </button>
+                     
+                     <button
+                        on:click={() => showImportModal = true}
+                        class="px-4 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg hover:from-blue-700 hover:to-indigo-700 transition-all shadow-lg font-medium flex items-center gap-2 whitespace-nowrap"
+                     >
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 19l3 3m0 0l3-3m-3 3V10"/>
+                        </svg>
+                        <span class="hidden sm:inline">Import</span>
+                     </button>
+                     
+                     <button
+                        on:click={exportCSV}
+                        class="px-4 py-2.5 bg-gradient-to-r from-orange-600 to-red-600 text-white rounded-lg hover:from-orange-700 hover:to-red-700 transition-all shadow-lg font-medium flex items-center gap-2 whitespace-nowrap"
+                     >
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
+                        </svg>
+                        <span class="hidden sm:inline">Export</span>
                      </button>
                   </div>
                </div>
@@ -313,6 +397,76 @@
       </div>
    </main>
 </div>
+
+<!-- Import Modal -->
+{#if showImportModal}
+   <div class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+      <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+         <div class="mt-3">
+            <h3 class="text-lg font-medium text-gray-900 mb-4">Import Data Wali Murid dari CSV</h3>
+            
+            <div class="mb-4">
+               <label for="csv-file" class="block text-sm font-medium text-gray-700 mb-2">Pilih File CSV</label>
+               <input
+                  id="csv-file"
+                  type="file"
+                  accept=".csv"
+                  on:change={handleFileSelect}
+                  class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+               />
+            </div>
+            
+            <div class="mb-4">
+               <button
+                  on:click={downloadTemplate}
+                  class="text-sm text-blue-600 hover:text-blue-800 underline"
+               >
+                  Download Template CSV
+               </button>
+            </div>
+            
+            {#if importResult}
+               <div class="mb-4 p-3 rounded-md" class:bg-green-50={importResult.success > 0} class:bg-red-50={importResult.errors?.length > 0}>
+                  <p class="text-sm font-medium" class:text-green-800={importResult.success > 0} class:text-red-800={importResult.errors?.length > 0}>
+                     {importResult.message}
+                  </p>
+                  {#if importResult.duplicates?.length > 0}
+                     <p class="text-sm text-yellow-700 mt-1">
+                        ⚠️ Data yang sudah ada: {importResult.duplicates.join(', ')}
+                     </p>
+                  {/if}
+                  {#if importResult.errors?.length > 0}
+                     <div class="mt-2 max-h-32 overflow-y-auto">
+                        {#each importResult.errors.slice(0, 5) as error}
+                           <p class="text-xs text-red-600">{error.message}</p>
+                        {/each}
+                        {#if importResult.errors.length > 5}
+                           <p class="text-xs text-red-600">... dan {importResult.errors.length - 5} error lainnya</p>
+                        {/if}
+                     </div>
+                  {/if}
+               </div>
+            {/if}
+            
+            <div class="flex justify-end space-x-3">
+               <button
+                  on:click={() => { showImportModal = false; importResult = null; csvFile = null; }}
+                  class="px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400"
+               >
+                  Batal
+               </button>
+               <button
+                  on:click={importCSV}
+                  disabled={!csvFile || isLoading}
+                  class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50"
+               >
+                  {isLoading ? 'Mengimport...' : 'Import'}
+               </button>
+            </div>
+         </div>
+      </div>
+   </div>
+{/if}
 
 <style>
    .fade-in-up {

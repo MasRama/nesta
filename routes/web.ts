@@ -238,6 +238,11 @@ Route.get("/api/students", [Auth, RoleAuth.admin()], StudentController.getStuden
  * GET   /admin/teachers/:id/edit - Teacher edit form
  * PUT   /admin/teachers/:id - Update teacher
  * DELETE /admin/teachers/:id - Delete teacher
+ *
+ * CSV Import/Export Routes:
+ * POST   /admin/teachers/import-csv - Import teachers from CSV
+ * GET    /admin/teachers/export-csv - Export teachers to CSV
+ * GET    /admin/teachers/template-csv - Download CSV template
  */
 Route.get("/admin/teachers", [Auth, RoleAuth.admin()], TeacherController.index);
 Route.get("/admin/teachers/create", [Auth, RoleAuth.admin()], TeacherController.create);
@@ -246,6 +251,11 @@ Route.get("/admin/teachers/:id", [Auth, RoleAuth.admin()], TeacherController.sho
 Route.get("/admin/teachers/:id/edit", [Auth, RoleAuth.admin()], TeacherController.edit);
 Route.put("/admin/teachers/:id", [Auth, RoleAuth.admin()], TeacherController.update);
 Route.delete("/admin/teachers/:id", [Auth, RoleAuth.admin()], TeacherController.destroy);
+
+// CSV Import/Export Routes
+Route.post("/admin/teachers/import-csv", [Auth, RoleAuth.admin()], TeacherController.importCSV);
+Route.get("/admin/teachers/export-csv", [Auth, RoleAuth.admin()], TeacherController.exportCSV);
+Route.get("/admin/teachers/template-csv", [Auth, RoleAuth.admin()], TeacherController.downloadTemplate);
 
 /**
  * Teacher API Routes
@@ -269,6 +279,11 @@ Route.get("/api/teachers/by-subject/:subjectId", [Auth, RoleAuth.admin()], Teach
  * PUT    /admin/parents/:id - Update parent
  * DELETE /admin/parents/:id - Delete parent (soft delete)
  *
+ * CSV Import/Export Routes:
+ * POST   /admin/parents/import-csv - Import parents from CSV
+ * GET    /admin/parents/export-csv - Export parents to CSV
+ * GET    /admin/parents/template-csv - Download CSV template
+ *
  * Student Management Routes:
  * POST   /admin/parents/:id/students - Add student to parent
  * DELETE /admin/parents/:id/students/:studentId - Remove student from parent
@@ -284,6 +299,11 @@ Route.get("/admin/parents/:id", [Auth, RoleAuth.admin()], ParentController.show)
 Route.get("/admin/parents/:id/edit", [Auth, RoleAuth.admin()], ParentController.edit);
 Route.put("/admin/parents/:id", [Auth, RoleAuth.admin()], ParentController.update);
 Route.delete("/admin/parents/:id", [Auth, RoleAuth.admin()], ParentController.destroy);
+
+// CSV Import/Export Routes
+Route.post("/admin/parents/import-csv", [Auth, RoleAuth.admin()], ParentController.importCSV);
+Route.get("/admin/parents/export-csv", [Auth, RoleAuth.admin()], ParentController.exportCSV);
+Route.get("/admin/parents/template-csv", [Auth, RoleAuth.admin()], ParentController.downloadTemplate);
 
 // Student Management Routes
 Route.post("/admin/parents/:id/students", [Auth, RoleAuth.admin()], ParentController.addStudent);
