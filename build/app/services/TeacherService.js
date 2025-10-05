@@ -222,6 +222,16 @@ class TeacherService {
                 });
             }
         }
+        if (data.hasOwnProperty('password')) {
+            if (!data.password || data.password.toString().trim() === '' || data.password.toString().trim().length < 6) {
+                errors.push({
+                    row,
+                    field: 'password',
+                    message: 'Password wajib diisi minimal 6 karakter',
+                    value: data.password
+                });
+            }
+        }
         if (data.nip && data.nip.toString().trim() !== '') {
             const nip = data.nip.toString().trim();
             if (!/^\d+$/.test(nip)) {
@@ -489,6 +499,112 @@ class TeacherService {
             console.error("Error checking teacher-subject assignment:", error);
             return false;
         }
+    }
+    parseCSV(csvContent) {
+        const errors = [];
+        const data = [];
+        const allLines = csvContent.split('\n').map(line => line.trim());
+        const lines = allLines.filter(line => line.length > 0);
+        if (lines.length < 3) {
+            errors.push({
+                row: 0,
+                field: 'file',
+                message: 'File CSV harus memiliki minimal 3 baris (header, nomor urut, dan data)',
+                value: null
+            });
+            return { data, errors };
+        }
+        for (let i = 2; i < lines.length; i++) {
+            const line = lines[i];
+            const rowNumber = i + 1;
+            const columns = line.split(';').map(col => col.trim());
+            const meaningfulColumns = columns.filter(col => col && col !== '');
+            if (meaningfulColumns.length === 0) {
+                continue;
+            }
+            const teacherData = {
+                nip: (columns[0] || '').trim(),
+                nama: (columns[1] || '').trim(),
+                email: (columns[2] || '').trim(),
+                password: (columns[3] || '').trim(),
+                phone: (columns[4] || '').trim()
+            };
+            const hasAnyData = teacherData.nip !== '' ||
+                teacherData.nama !== '' ||
+                teacherData.email !== '' ||
+                teacherData.password !== '';
+            if (!hasAnyData) {
+                continue;
+            }
+            const hasMinimumRequiredData = teacherData.nip !== '' &&
+                teacherData.nama !== '' &&
+                teacherData.email !== '' &&
+                teacherData.password !== '';
+            if (!hasMinimumRequiredData) {
+                continue;
+            }
+            const rowErrors = this.validateTeacherData(teacherData, rowNumber);
+            if (rowErrors.length === 0) {
+                data.push(teacherData);
+            }
+        }
+        return { data, errors };
+    }
+    async importFromCSV(csvContent) {
+        const { data, errors } = this.parseCSV(csvContent);
+        const duplicates = [];
+        let success = 0;
+        if (errors.length > 0) {
+            return { success, errors, duplicates };
+        }
+        for (const teacherData of data) {
+            try {
+                const existingByNIP = await this.getTeacherByNIP(teacherData.nip);
+                if (existingByNIP) {
+                    duplicates.push(`${teacherData.nip} (NIP)`);
+                    continue;
+                }
+                const existingByEmail = await this.getTeacherByEmail(teacherData.email);
+                if (existingByEmail) {
+                    duplicates.push(`${teacherData.email} (Email)`);
+                    continue;
+                }
+                await this.createTeacher(teacherData);
+                success++;
+            }
+            catch (error) {
+                errors.push({
+                    row: 0,
+                    field: 'nip',
+                    message: `Gagal menyimpan guru dengan NIP ${teacherData.nip}: ${error.message}`,
+                    value: teacherData.nip
+                });
+            }
+        }
+        return { success, errors, duplicates };
+    }
+    async exportToCSV(filters) {
+        let query = DB_1.default.from('teachers').where('is_active', true);
+        if (filters?.search) {
+            query = query.where(function () {
+                this.where('nama', 'like', `%${filters.search}%`)
+                    .orWhere('nip', 'like', `%${filters.search}%`)
+                    .orWhere('email', 'like', `%${filters.search}%`);
+            });
+        }
+        const teachers = await query.orderBy('nama');
+        const header = 'NIP;NAMA;EMAIL;PASSWORD;TELEPON;;;;;;;;;;;;;;;;;;;;';
+        const numberRow = '1;2;3;4;5;;;;;;;;;;;;;;;;;;;;';
+        const dataRows = teachers.map(teacher => {
+            return `${teacher.nip};${teacher.nama};${teacher.email};;${teacher.phone || ''};;;;;;;;;;;;;;;;;;;;`;
+        });
+        return [header, numberRow, ...dataRows].join('\n');
+    }
+    generateCSVTemplate() {
+        const header = 'NIP;NAMA;EMAIL;PASSWORD;TELEPON;;;;;;;;;;;;;;;;;;;;';
+        const numberRow = '1;2;3;4;5;;;;;;;;;;;;;;;;;;;;';
+        const exampleRow = '198012152008011001;Dr. Ahmad Santoso;ahmad.santoso@example.com;password123;081234567890;;;;;;;;;;;;;;;;;;;;';
+        return [header, numberRow, exampleRow].join('\n');
     }
 }
 exports.default = new TeacherService();

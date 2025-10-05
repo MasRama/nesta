@@ -218,6 +218,51 @@ class TeacherController {
             return response.status(500).json({ error: 'Gagal mengambil data guru berdasarkan mata pelajaran' });
         }
     }
+    async importCSV(request, response) {
+        try {
+            const { csvContent } = await request.json();
+            if (!csvContent) {
+                return response.status(400).json({ error: 'File CSV tidak ditemukan' });
+            }
+            const result = await TeacherService_1.default.importFromCSV(csvContent);
+            let message = `Import selesai. ${result.success} guru berhasil ditambahkan.`;
+            return response.json({
+                message,
+                success: result.success,
+                errors: result.errors,
+                duplicates: result.duplicates
+            });
+        }
+        catch (error) {
+            console.error('Error importing CSV:', error);
+            return response.status(500).json({ error: 'Gagal mengimport data CSV' });
+        }
+    }
+    async exportCSV(request, response) {
+        try {
+            const search = request.query.search;
+            const csvContent = await TeacherService_1.default.exportToCSV({ search });
+            response.setHeader('Content-Type', 'text/csv; charset=utf-8');
+            response.setHeader('Content-Disposition', 'attachment; filename="data_guru.csv"');
+            return response.send(csvContent);
+        }
+        catch (error) {
+            console.error('Error exporting CSV:', error);
+            return response.status(500).json({ error: 'Gagal mengexport data CSV' });
+        }
+    }
+    async downloadTemplate(request, response) {
+        try {
+            const csvContent = TeacherService_1.default.generateCSVTemplate();
+            response.setHeader('Content-Type', 'text/csv; charset=utf-8');
+            response.setHeader('Content-Disposition', 'attachment; filename="template_guru.csv"');
+            return response.send(csvContent);
+        }
+        catch (error) {
+            console.error('Error downloading template:', error);
+            return response.status(500).json({ error: 'Gagal mendownload template' });
+        }
+    }
 }
 exports.default = new TeacherController();
 //# sourceMappingURL=TeacherController.js.map

@@ -247,6 +247,51 @@ class ParentController {
             return response.status(500).json({ error: 'Gagal menghapus siswa dari wali murid' });
         }
     }
+    async importCSV(request, response) {
+        try {
+            const { csvContent } = await request.json();
+            if (!csvContent) {
+                return response.status(400).json({ error: 'File CSV tidak ditemukan' });
+            }
+            const result = await ParentService_1.default.importFromCSV(csvContent);
+            let message = `Import selesai. ${result.success} wali murid berhasil ditambahkan.`;
+            return response.json({
+                message,
+                success: result.success,
+                errors: result.errors,
+                duplicates: result.duplicates
+            });
+        }
+        catch (error) {
+            console.error('Error importing CSV:', error);
+            return response.status(500).json({ error: 'Gagal mengimport data CSV' });
+        }
+    }
+    async exportCSV(request, response) {
+        try {
+            const search = request.query.search;
+            const csvContent = await ParentService_1.default.exportToCSV({ search });
+            response.setHeader('Content-Type', 'text/csv; charset=utf-8');
+            response.setHeader('Content-Disposition', 'attachment; filename="data_wali_murid.csv"');
+            return response.send(csvContent);
+        }
+        catch (error) {
+            console.error('Error exporting CSV:', error);
+            return response.status(500).json({ error: 'Gagal mengexport data CSV' });
+        }
+    }
+    async downloadTemplate(request, response) {
+        try {
+            const csvContent = ParentService_1.default.generateCSVTemplate();
+            response.setHeader('Content-Type', 'text/csv; charset=utf-8');
+            response.setHeader('Content-Disposition', 'attachment; filename="template_wali_murid.csv"');
+            return response.send(csvContent);
+        }
+        catch (error) {
+            console.error('Error downloading template:', error);
+            return response.status(500).json({ error: 'Gagal mendownload template' });
+        }
+    }
 }
 exports.default = new ParentController();
 //# sourceMappingURL=ParentController.js.map

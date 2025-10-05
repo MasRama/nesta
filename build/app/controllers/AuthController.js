@@ -325,6 +325,30 @@ Link ini akan kadaluarsa dalam 24 jam.`,
             await Authenticate_1.default.logout(request, response);
         }
     }
+    async processStudentLogin(request, response) {
+        let { email, password } = await request.json();
+        if (!email || !email.endsWith("@spensagi.id")) {
+            return response
+                .cookie("error", "Format email harus nipd@spensagi.id", 3000)
+                .redirect("/login");
+        }
+        const nipd = email.replace("@spensagi.id", "");
+        const student = await DB_1.default.from("students")
+            .where("nipd", nipd)
+            .where("is_active", true)
+            .first();
+        if (!student) {
+            return response
+                .cookie("error", "NIPD tidak ditemukan atau tidak aktif", 3000)
+                .redirect("/login");
+        }
+        if (password !== nipd) {
+            return response
+                .cookie("error", "Password salah", 3000)
+                .redirect("/login");
+        }
+        return Authenticate_1.default.processStudent(student, request, response);
+    }
 }
 exports.default = new AuthController();
 //# sourceMappingURL=AuthController.js.map

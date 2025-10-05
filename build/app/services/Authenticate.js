@@ -31,6 +31,17 @@ class Autenticate {
             .cookie("auth_id", token, 1000 * 60 * 60 * 24 * 60)
             .redirect("/home");
     }
+    async processStudent(student, request, response) {
+        const token = (0, crypto_1.randomUUID)();
+        await DB_1.default.table("sessions").insert({
+            id: token,
+            student_id: student.id,
+            user_agent: request.headers["user-agent"],
+        });
+        response
+            .cookie("auth_id", token, 1000 * 60 * 60 * 24 * 60)
+            .redirect("/dashboard/student");
+    }
     async logout(request, response) {
         await DB_1.default.from("sessions").where("id", request.cookies.auth_id).delete();
         response.cookie("auth_id", "", 0).redirect("/login");

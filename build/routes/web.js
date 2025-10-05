@@ -22,6 +22,7 @@ const Route = new hyper_express_1.default.Router();
 Route.get("/", HomeController_1.default.index);
 Route.get("/login", AuthController_1.default.loginPage);
 Route.post("/login", SchoolAuthController_1.default.processLogin);
+Route.post("/student/login", AuthController_1.default.processStudentLogin);
 Route.get("/register", AuthController_1.default.registerPage);
 Route.post("/register", SchoolAuthController_1.default.processRegister);
 Route.post("/logout", AuthController_1.default.logout);
@@ -101,6 +102,9 @@ Route.get("/admin/teachers/:id", [auth_1.default, roleAuth_1.default.admin()], T
 Route.get("/admin/teachers/:id/edit", [auth_1.default, roleAuth_1.default.admin()], TeacherController_1.default.edit);
 Route.put("/admin/teachers/:id", [auth_1.default, roleAuth_1.default.admin()], TeacherController_1.default.update);
 Route.delete("/admin/teachers/:id", [auth_1.default, roleAuth_1.default.admin()], TeacherController_1.default.destroy);
+Route.post("/admin/teachers/import-csv", [auth_1.default, roleAuth_1.default.admin()], TeacherController_1.default.importCSV);
+Route.get("/admin/teachers/export-csv", [auth_1.default, roleAuth_1.default.admin()], TeacherController_1.default.exportCSV);
+Route.get("/admin/teachers/template-csv", [auth_1.default, roleAuth_1.default.admin()], TeacherController_1.default.downloadTemplate);
 Route.get("/api/teachers", [auth_1.default, roleAuth_1.default.admin()], TeacherController_1.default.getTeachersAPI);
 Route.get("/api/teachers/by-subject/:subjectId", [auth_1.default, roleAuth_1.default.admin()], TeacherController_1.default.getTeachersBySubject);
 Route.get("/admin/parents", [auth_1.default, roleAuth_1.default.admin()], ParentController_1.default.index);
@@ -110,6 +114,9 @@ Route.get("/admin/parents/:id", [auth_1.default, roleAuth_1.default.admin()], Pa
 Route.get("/admin/parents/:id/edit", [auth_1.default, roleAuth_1.default.admin()], ParentController_1.default.edit);
 Route.put("/admin/parents/:id", [auth_1.default, roleAuth_1.default.admin()], ParentController_1.default.update);
 Route.delete("/admin/parents/:id", [auth_1.default, roleAuth_1.default.admin()], ParentController_1.default.destroy);
+Route.post("/admin/parents/import-csv", [auth_1.default, roleAuth_1.default.admin()], ParentController_1.default.importCSV);
+Route.get("/admin/parents/export-csv", [auth_1.default, roleAuth_1.default.admin()], ParentController_1.default.exportCSV);
+Route.get("/admin/parents/template-csv", [auth_1.default, roleAuth_1.default.admin()], ParentController_1.default.downloadTemplate);
 Route.post("/admin/parents/:id/students", [auth_1.default, roleAuth_1.default.admin()], ParentController_1.default.addStudent);
 Route.delete("/admin/parents/:id/students/:studentId", [auth_1.default, roleAuth_1.default.admin()], ParentController_1.default.removeStudent);
 Route.get("/api/parents", [auth_1.default, roleAuth_1.default.admin()], ParentController_1.default.getParentsAPI);

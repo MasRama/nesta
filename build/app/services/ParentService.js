@@ -198,6 +198,102 @@ class ParentService {
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         return emailRegex.test(email);
     }
+    parseCSV(csvContent) {
+        const errors = [];
+        const data = [];
+        const allLines = csvContent.split('\n').map(line => line.trim());
+        const lines = allLines.filter(line => line.length > 0);
+        if (lines.length < 3) {
+            errors.push({
+                field: 'file',
+                message: 'File CSV harus memiliki minimal 3 baris (header, nomor urut, dan data)',
+                value: null
+            });
+            return { data, errors };
+        }
+        for (let i = 2; i < lines.length; i++) {
+            const line = lines[i];
+            const columns = line.split(';').map(col => col.trim());
+            const meaningfulColumns = columns.filter(col => col && col !== '');
+            if (meaningfulColumns.length === 0) {
+                continue;
+            }
+            const parentData = {
+                nama: (columns[0] || '').trim(),
+                email: (columns[1] || '').trim(),
+                password: (columns[2] || '').trim(),
+                phone: (columns[3] || '').trim(),
+                notes: (columns[4] || '').trim()
+            };
+            const hasAnyData = parentData.nama !== '' ||
+                parentData.email !== '' ||
+                parentData.password !== '';
+            if (!hasAnyData) {
+                continue;
+            }
+            const hasMinimumRequiredData = parentData.nama !== '' &&
+                parentData.email !== '' &&
+                parentData.password !== '';
+            if (!hasMinimumRequiredData) {
+                continue;
+            }
+            const rowErrors = this.validateParentData(parentData);
+            if (rowErrors.length === 0) {
+                data.push(parentData);
+            }
+        }
+        return { data, errors };
+    }
+    async importFromCSV(csvContent) {
+        const { data, errors } = this.parseCSV(csvContent);
+        const duplicates = [];
+        let success = 0;
+        if (errors.length > 0) {
+            return { success, errors, duplicates };
+        }
+        for (const parentData of data) {
+            try {
+                const existingByEmail = await this.getParentByEmail(parentData.email);
+                if (existingByEmail) {
+                    duplicates.push(`${parentData.email} (Email)`);
+                    continue;
+                }
+                await this.createParent(parentData);
+                success++;
+            }
+            catch (error) {
+                errors.push({
+                    field: 'email',
+                    message: `Gagal menyimpan wali murid dengan email ${parentData.email}: ${error.message}`,
+                    value: parentData.email
+                });
+            }
+        }
+        return { success, errors, duplicates };
+    }
+    async exportToCSV(filters) {
+        let query = DB_1.default.from('parents');
+        if (filters?.search) {
+            query = query.where(function () {
+                this.where('nama', 'like', `%${filters.search}%`)
+                    .orWhere('email', 'like', `%${filters.search}%`)
+                    .orWhere('phone', 'like', `%${filters.search}%`);
+            });
+        }
+        const parents = await query.orderBy('nama');
+        const header = 'NAMA;EMAIL;PASSWORD;TELEPON;CATATAN;;;;;;;;;;;;;;;;;;;;';
+        const numberRow = '1;2;3;4;5;;;;;;;;;;;;;;;;;;;;';
+        const dataRows = parents.map(parent => {
+            return `${parent.nama};${parent.email};;${parent.phone || ''};${parent.notes || ''};;;;;;;;;;;;;;;;;;;;`;
+        });
+        return [header, numberRow, ...dataRows].join('\n');
+    }
+    generateCSVTemplate() {
+        const header = 'NAMA;EMAIL;PASSWORD;TELEPON;CATATAN;;;;;;;;;;;;;;;;;;;;';
+        const numberRow = '1;2;3;4;5;;;;;;;;;;;;;;;;;;;;';
+        const exampleRow = 'Budi Santoso;budi.santoso@example.com;password123;081234567890;Orang tua siswa kelas 7A;;;;;;;;;;;;;;;;;;;;';
+        return [header, numberRow, exampleRow].join('\n');
+    }
 }
 exports.default = new ParentService();
 //# sourceMappingURL=ParentService.js.map
