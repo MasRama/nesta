@@ -13,6 +13,7 @@ const TeacherController_1 = __importDefault(require("../app/controllers/TeacherC
 const ParentController_1 = __importDefault(require("../app/controllers/ParentController"));
 const SubjectController_1 = __importDefault(require("../app/controllers/SubjectController"));
 const ClassController_1 = __importDefault(require("../app/controllers/ClassController"));
+const LeaderboardController_1 = __importDefault(require("../app/controllers/LeaderboardController"));
 const auth_1 = __importDefault(require("../app/middlewares/auth"));
 const roleAuth_1 = __importDefault(require("../app/middlewares/roleAuth"));
 const HomeController_1 = __importDefault(require("../app/controllers/HomeController"));
@@ -140,6 +141,15 @@ Route.get("/admin/classes/:className/subjects", [auth_1.default, roleAuth_1.defa
 Route.get("/api/classes", [auth_1.default, roleAuth_1.default.admin()], ClassController_1.default.getClassesAPI);
 Route.get("/api/classes/teachers", [auth_1.default, roleAuth_1.default.admin()], ClassController_1.default.getAvailableTeachers);
 Route.get("/api/classes/subjects", [auth_1.default, roleAuth_1.default.admin()], ClassController_1.default.getAvailableSubjects);
+Route.get("/admin/leaderboard", [auth_1.default, roleAuth_1.default.admin()], LeaderboardController_1.default.index);
+Route.get("/admin/leaderboard/create", [auth_1.default, roleAuth_1.default.admin()], LeaderboardController_1.default.create);
+Route.post("/admin/leaderboard", [auth_1.default, roleAuth_1.default.admin()], LeaderboardController_1.default.store);
+Route.get("/admin/leaderboard/:id/edit", [auth_1.default, roleAuth_1.default.admin()], LeaderboardController_1.default.edit);
+Route.put("/admin/leaderboard/:id", [auth_1.default, roleAuth_1.default.admin()], LeaderboardController_1.default.update);
+Route.delete("/admin/leaderboard/:id", [auth_1.default, roleAuth_1.default.admin()], LeaderboardController_1.default.destroy);
+Route.post("/admin/leaderboard/bulk-delete", [auth_1.default, roleAuth_1.default.admin()], LeaderboardController_1.default.bulkDelete);
+Route.get("/leaderboard", LeaderboardController_1.default.publicLeaderboard);
+Route.get("/api/leaderboard", LeaderboardController_1.default.getLeaderboardAPI);
 Route.get("/assets/:file", AssetController_1.default.distFolder);
 Route.get("/*", AssetController_1.default.publicFolder);
 exports.default = Route;
