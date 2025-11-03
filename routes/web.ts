@@ -8,6 +8,7 @@ import TeacherController from "../app/controllers/TeacherController";
 import ParentController from "../app/controllers/ParentController";
 import SubjectController from "../app/controllers/SubjectController";
 import ClassController from "../app/controllers/ClassController";
+import LeaderboardController from "../app/controllers/LeaderboardController";
 import Auth from "../app/middlewares/auth"
 import RoleAuth from "../app/middlewares/roleAuth";
 import HomeController from "../app/controllers/HomeController";
@@ -376,6 +377,42 @@ Route.get("/admin/classes/:className/subjects", [Auth, RoleAuth.admin()], ClassC
 Route.get("/api/classes", [Auth, RoleAuth.admin()], ClassController.getClassesAPI);
 Route.get("/api/classes/teachers", [Auth, RoleAuth.admin()], ClassController.getAvailableTeachers);
 Route.get("/api/classes/subjects", [Auth, RoleAuth.admin()], ClassController.getAvailableSubjects);
+
+/**
+ * Leaderboard Management Routes (Admin Only)
+ * Routes for managing class leaderboard with points system
+ * ------------------------------------------------
+ * GET    /admin/leaderboard - List all leaderboard entries with ranking
+ * GET    /admin/leaderboard/create - Show create leaderboard form
+ * POST   /admin/leaderboard - Store new leaderboard entry
+ * GET    /admin/leaderboard/:id/edit - Show edit leaderboard form
+ * PUT    /admin/leaderboard/:id - Update leaderboard entry
+ * DELETE /admin/leaderboard/:id - Delete leaderboard entry
+ * POST   /admin/leaderboard/bulk-delete - Bulk delete leaderboard entries
+ */
+Route.get("/admin/leaderboard", [Auth, RoleAuth.admin()], LeaderboardController.index);
+Route.get("/admin/leaderboard/create", [Auth, RoleAuth.admin()], LeaderboardController.create);
+Route.post("/admin/leaderboard", [Auth, RoleAuth.admin()], LeaderboardController.store);
+Route.get("/admin/leaderboard/:id/edit", [Auth, RoleAuth.admin()], LeaderboardController.edit);
+Route.put("/admin/leaderboard/:id", [Auth, RoleAuth.admin()], LeaderboardController.update);
+Route.delete("/admin/leaderboard/:id", [Auth, RoleAuth.admin()], LeaderboardController.destroy);
+Route.post("/admin/leaderboard/bulk-delete", [Auth, RoleAuth.admin()], LeaderboardController.bulkDelete);
+
+/**
+ * Public Leaderboard Route
+ * Public route for viewing class leaderboard rankings
+ * ------------------------------------------------
+ * GET   /leaderboard - Show public leaderboard page
+ */
+Route.get("/leaderboard", LeaderboardController.publicLeaderboard);
+
+/**
+ * Leaderboard API Routes
+ * API endpoints for leaderboard data
+ * ------------------------------------------------
+ * GET   /api/leaderboard - Get public leaderboard data (JSON)
+ */
+Route.get("/api/leaderboard", LeaderboardController.getLeaderboardAPI);
 
 /**
  * Static Asset Handling Routes

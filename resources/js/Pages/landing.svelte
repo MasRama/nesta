@@ -50,6 +50,10 @@
       router.visit('/register');
    }
 
+   function navigateToLeaderboard() {
+      router.visit('/leaderboard');
+   }
+
    function toggleMenu() {
       isMenuOpen = !isMenuOpen;
    }
@@ -105,6 +109,12 @@
                on:click={() => scrollToSection('information')}
             >
                Informasi
+            </button>
+            <button 
+               class="px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 hover:bg-gray-100 text-gray-600"
+               on:click={navigateToLeaderboard}
+            >
+               Leaderboard
             </button>
          </div>
 
@@ -165,6 +175,12 @@
                   on:click={() => scrollToSection('information')}
                >
                   Informasi
+               </button>
+               <button 
+                  class="px-4 py-3 text-left rounded-lg text-sm font-medium transition-colors hover:bg-gray-100 text-gray-600"
+                  on:click={navigateToLeaderboard}
+               >
+                  Leaderboard
                </button>
                <hr class="border-gray-200 my-2">
                <button
